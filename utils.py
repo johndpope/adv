@@ -1,14 +1,30 @@
 import numpy as np
-from sklearn.model_selection import KFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.metrics import log_loss
 from matplotlib import pyplot as plt
 
 
-def rank_classifiers(models, X, Y):
+def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
+    """
+    models: list of tuples [('model name', model object), ...]
+    X: training data
+    Y: labels
+    """
+    cv_results = []
     results = []
     names = []
     for name, model in models:
-        kf = KFold(n_splits=10, random_state=2017)
-        cv_results = cross_val_score(model, X, Y, cv=kf, scoring='accuracy')
+        print("Testing model {}".format(name))
+        skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
+        for tr_id, te_id in skf.split(X, np.argmax(Y, axis=1)):
+            trX, teX = X[tr_id], X[te_id]
+            trY, teY = Y[tr_id], Y[te_id]
+            model.fit(trX, trY, nb_epoch=nb_epochs, batch_size=batch_size,
+                      verbose=1)
+            predictions = model.predict(teX)
+            cv_results.append(log_loss(np.argmax(teY, axis=1),
+                                       np.argmax(predictions, axis=1)))
+        # cv_results = cross_val_score(model, X, Y, cv=kf, scoring='accuracy')
         results.append(cv_results)
         names.append(name)
         print("model = {}, mean = {}, std = {}".format(name,

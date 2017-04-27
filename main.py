@@ -7,36 +7,39 @@ import numpy as np
 import argparse
 import tensorflow as tf
 import keras
+from keras.datasets import mnist
 from keras.utils import np_utils
 from keras.utils.visualize_util import plot
 from sklearn.model_selection import train_test_split
 
-from cleverhans.utils_mnist import data_mnist, data_cifar
-from cleverhans.utils_tf import model_train, model_eval, batch_eval
-from cleverhans.attacks import fgsm
-from cleverhans.utils import cnn_model, pair_visual, grid_visual
-from models import hierarchical, irnn, mlp, siamese, identity_model, mlp_lle, cnn_lle
+# from cleverhans.utils_mnist import data_mnist, data_cifar
+# from cleverhans.utils_tf import model_train, model_eval, batch_eval
+# from cleverhans.attacks import fgsm
+# from cleverhans.utils import cnn_model, pair_visual, grid_visual
+from models import hierarchical, irnn, mlp, siamese, identity_model
+from models import mlp_lle, cnn_lle, cnn_model
+from utils import rank_classifiers
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Arguments for "
                                      "adversarial samples.")
-    parser.add_argument("batch_size", type=int, default=128,
-                        description="Batch size for training "
+    parser.add_argument("-b", "--batch_size", type=int, default=128,
+                        help="Batch size for training "
                         "and testing the model")
-    parser.add_argument("epochs", type=int, default=15,
-                        description="Nb of epochs for training")
-    parser.add_argument("model", type=str, default="cnn_model",
-                        description="The model used for taining and"
+    parser.add_argument("-e", "--epochs", type=int, default=15,
+                        help="Nb of epochs for training")
+    parser.add_argument("-m", "--model", type=str, default="cnn_model",
+                        help="The model used for taining and"
                         "testing against adversarial attacks")
-    parser.add_argument("attack", type=str, default="fgsm",
-                        description="Choose the method of attack, "
+    parser.add_argument("-a", "--attack", type=str, default="fgsm",
+                        help="Choose the method of attack, "
                         "1.)fgsm, 2.)jmsa")
     parser.add_argument("dataset", type=str, default="mnist",
-                        description="Choose the dataset to be used for "
+                        help="Choose the dataset to be used for "
                         "the training and the attacks")
-    parser.add_argument("nb_classes", type=int, default=10,
-                        description="Choose the number of classes in your"
+    parser.add_argument("-c", "--nb_classes", type=int, default=10,
+                        help="Choose the number of classes in your"
                         "dataset")
     args = parser.parse_args()
 
@@ -51,7 +54,8 @@ if __name__ == "__main__":
 
     # Get test data
     if args.dataset == "mnist":
-        X, Y, X_test, Y_test = data_mnist()
+        (X, Y), (X_test, Y_test) = mnist.load_data()
+        # X, Y, X_test, Y_test = data_mnist()
     elif args.dataset == "cifar":
         X, Y, X_test, Y_test = data_cifar()
     elif args.dataset == "mnist_lle":
@@ -76,6 +80,20 @@ if __name__ == "__main__":
     label_smooth = .1
     Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
 
+    cnn = cnn_model()
+    per = mlp()
+    hr = hierarchical()
+    ir = irnn()
+    idd = identity_model()
+    models = [("cnn_model", cnn),
+              ("mlp", per),
+              ("hierarchical", hr),
+              ("irnn", ir),
+              ("identity_model", idd)]
+
+    rank_classifiers(models, X_train, Y_train)
+    import pdb
+    pdb.set_trace()
     # Define input TF placeholder
     x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
     y = tf.placeholder(tf.float32, shape=(None, 10))

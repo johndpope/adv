@@ -1,5 +1,6 @@
 from __future__ import print_function
 import numpy as np
+import keras
 from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization
 from keras.layers import Convolution2D, MaxPooling2D, Input, Lambda
@@ -33,7 +34,8 @@ def contrastive_loss(y_true, y_pred):
     http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
     '''
     margin = 1
-    return K.mean(y_true * K.square(y_pred) + (1 - y_true) * K.square(K.maximum(margin - y_pred, 0)))
+    return K.mean(y_true * K.square(y_pred) + (1 - y_true) *
+                  K.square(K.maximum(margin - y_pred, 0)))
 
 
 def create_pairs(x, digit_indices):
@@ -171,7 +173,8 @@ def preprocess_swwae(X_train, X_test):
         import sys
         sys.exit("Script supports pool_size of 2 and 3.")
 
-    # Shape of input to train on (note that model is fully convolutional however)
+    # Shape of input to train on (note that model is fully
+    # convolutional however)
     input_shape = X_train.shape[1:]
 
 
@@ -192,7 +195,8 @@ def swwae(X_train, X_test):
         wheres[i] = merge([y_prepool, y], mode=getwhere,
                           output_shape=lambda x: x[0])
 
-    # Now build the decoder, and use the stored "where" masks to place the features
+    # Now build the decoder, and use the stored "where" masks to places
+    # the features
     for i in range(nlayers):
         ind = nlayers - 1 - i
         y = UpSampling2D(size=(pool_sizes[ind], pool_sizes[ind]))(y)
@@ -202,21 +206,22 @@ def swwae(X_train, X_test):
     # Use hard_simgoid to clip range of reconstruction
     y = Activation('hard_sigmoid')(y)
 
-    # Define the model and it's mean square error loss, and compile it with Adam
+    # Define the model and it's mean square error loss, and
+    # compile it with Adam
     model = Model(img_input, y)
     model.compile('adam', 'mse')
 
     return model
     # Plot
-    #X_recon = model.predict(X_test[:25])
-    #X_plot = np.concatenate((X_test[:25], X_recon), axis=1)
-    #X_plot = X_plot.reshape((5, 10, input_shape[-2], input_shape[-1]))
-    #X_plot = np.vstack([np.hstack(x) for x in X_plot])
-    #plt.figure()
-    #plt.axis('off')
-    #plt.title('Test Samples: Originals/Reconstructions')
-    #plt.imshow(X_plot, interpolation='none', cmap='gray')
-    #plt.savefig('reconstructions.png')
+    # X_recon = model.predict(X_test[:25])
+    # X_plot = np.concatenate((X_test[:25], X_recon), axis=1)
+    # X_plot = X_plot.reshape((5, 10, input_shape[-2], input_shape[-1]))
+    # X_plot = np.vstack([np.hstack(x) for x in X_plot])
+    # plt.figure()
+    # plt.axis('off')
+    # plt.title('Test Samples: Originals/Reconstructions')
+    # plt.imshow(X_plot, interpolation='none', cmap='gray')
+    # plt.savefig('reconstructions.png')
 
 
 def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
@@ -244,12 +249,12 @@ def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
 def irnn(data_shape=(None, 784, 1), nb_classes=10,
          learning_rate=1e-6, hidden_units=100):
     #clip_norm = 1.0
-
-    print('Evaluate IRNN...')
     model = Sequential()
     model.add(SimpleRNN(output_dim=hidden_units,
-                        init=lambda shape, name: normal(shape, scale=0.001, name=name),
-                        inner_init=lambda shape, name: identity(shape, scale=1.0, name=name),
+                        init=lambda shape,
+                        name: normal(shape, scale=0.001, name=name),
+                        inner_init=lambda shape,
+                        name: identity(shape, scale=1.0, name=name),
                         activation='relu',
                         input_shape=data_shape[1:]))
     model.add(Dense(nb_classes))
@@ -324,6 +329,8 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
         logits_tensor = model(input_ph)
 
     model.add(Activation('softmax'))
+    model.compile(optimizer='adam', loss='categorical_crossentropy',
+                  metrics=['accuracy'])
 
     if logits:
         return model, logits_tensor
@@ -425,6 +432,8 @@ def identity_model(test=None, inpt=Input(shape=(28, 28, 1)),
     x = Flatten()(m3)
     x = Dense(nb_classes, activation='softmax')(x)
     model = Model(inpt, x, name='identity')
+    model.compile(optimizer='adam', loss='categorical_crossentropy',
+                  metrics=['accuracy'])
 
     return model
 
