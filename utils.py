@@ -1,5 +1,26 @@
 import numpy as np
+from sklearn.model_selection import KFold, cross_val_score
 from matplotlib import pyplot as plt
+
+
+def rank_classifiers(models, X, Y):
+    results = []
+    names = []
+    for name, model in models:
+        kf = KFold(n_splits=10, random_state=2017)
+        cv_results = cross_val_score(model, X, Y, cv=kf, scoring='accuracy')
+        results.append(cv_results)
+        names.append(name)
+        print("model = {}, mean = {}, std = {}".format(name,
+                                                       cv_results.mean(),
+                                                       cv_results.std()))
+    # boxplot algorithm comparison
+    fig = plt.figure()
+    fig.suptitle('Algorithm Comparison')
+    ax = fig.add_subplot(111)
+    plt.boxplot(results)
+    ax.set_xticklabels(names)
+    plt.show()
 
 
 def plot_mnist(X, y, X_embedded, name, min_dist=10.0):
