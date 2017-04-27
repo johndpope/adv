@@ -1,13 +1,11 @@
 from __future__ import print_function
 import numpy as np
-from keras.datasets import mnist
 from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization
 from keras.layers import Convolution2D, MaxPooling2D, Input, Lambda
 from keras.layers import LSTM, TimeDistributed, merge, SimpleRNN
 from keras.optimizers import RMSprop, Adam
 from keras.initializations import normal, identity
-from keras.utils import np_utils
 from keras import backend as K
 
 np.random.seed(2017)  # for reproducibility
@@ -49,7 +47,7 @@ def create_pairs(x, digit_indices):
         for i in range(n):
             z1, z2 = digit_indices[d][i], digit_indices[d][i + 1]
             pairs += [[x[z1], x[z2]]]
-            inc = random.randrange(1, 10)
+            inc = np.random.randrange(1, 10)
             dn = (d + inc) % 10
             z1, z2 = digit_indices[d][i], digit_indices[dn][i]
             pairs += [[x[z1], x[z2]]]
@@ -95,7 +93,9 @@ def siamese(X_train, X_test, y_train, y_test, input_dim=784):
     processed_a = base_network(input_a)
     processed_b = base_network(input_b)
 
-    distance = Lambda(euclidean_distance, output_shape=eucl_dist_output_shape)([processed_a, processed_b])
+    distance = Lambda(euclidean_distance,
+                      output_shape=eucl_dist_output_shape)
+    ([processed_a, processed_b])
 
     model = Model(input=[input_a, input_b], output=distance)
 
@@ -104,16 +104,16 @@ def siamese(X_train, X_test, y_train, y_test, input_dim=784):
     model.compile(loss=contrastive_loss, optimizer=rms)
 
     return model
-    #model.fit([tr_pairs[:, 0], tr_pairs[:, 1]], tr_y,
+    # model.fit([tr_pairs[:, 0], tr_pairs[:, 1]], tr_y,
     #          validation_data=([te_pairs[:, 0], te_pairs[:, 1]], te_y),
     #          batch_size=128,
     #          nb_epoch=nb_epoch)
 
-    ## compute final accuracy on training and test sets
-    #pred = model.predict([tr_pairs[:, 0], tr_pairs[:, 1]])
-    #tr_acc = compute_accuracy(pred, tr_y)
-    #pred = model.predict([te_pairs[:, 0], te_pairs[:, 1]])
-    #te_acc = compute_accuracy(pred, te_y)
+    # compute final accuracy on training and test sets
+    # pred = model.predict([tr_pairs[:, 0], tr_pairs[:, 1]])
+    # tr_acc = compute_accuracy(pred, tr_y)
+    # pred = model.predict([te_pairs[:, 0], te_pairs[:, 1]])
+    # te_acc = compute_accuracy(pred, te_y)
 
 
 def convresblock(x, nfeats=8, ksize=3, nskipped=2):
@@ -138,10 +138,10 @@ def getwhere(x):
 def preprocess_swwae(X_train, X_test):
     if K.backend() == 'tensorflow':
         raise RuntimeError('This example can only run with the '
-                       'Theano backend for the time being, '
-                       'because it requires taking the gradient '
-                       'of a gradient, which isn\'t '
-                       'supported for all TF ops.')
+                           'Theano backend for the time being, '
+                           'because it requires taking the gradient '
+                           'of a gradient, which isn\'t '
+                           'supported for all TF ops.')
     K.set_image_dim_ordering('th')
 
     # The size of the kernel used for the MaxPooling2D
@@ -159,7 +159,8 @@ def preprocess_swwae(X_train, X_test):
         # if using a 5 layer net of pool_size = 2
         X_train = np.pad(X_train, [[0, 0], [0, 0], [2, 2], [2, 2]],
                          mode='constant')
-        X_test = np.pad(X_test, [[0, 0], [0, 0], [2, 2], [2, 2]], mode='constant')
+        X_test = np.pad(X_test, [[0, 0], [0, 0], [2, 2], [2, 2]],
+                        mode='constant')
         nlayers = 5
     elif pool_size == 3:
         # if using a 3 layer net of pool_size = 3
@@ -218,8 +219,8 @@ def swwae(X_train, X_test):
     #plt.savefig('reconstructions.png')
 
 
-def hierarchical(data_shape=(28, 28, 1), nb_classes=10, row_hidden=128, col_hidden=128):
-
+def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
+                 row_hidden=128, col_hidden=128):
     # Embedding dimensions.
     # 4D input.
     x = Input(shape=data_shape)
@@ -240,7 +241,8 @@ def hierarchical(data_shape=(28, 28, 1), nb_classes=10, row_hidden=128, col_hidd
     return model
 
 
-def irnn(data_shape=(None, 784, 1), nb_classes=10, learning_rate=1e-6, hidden_units=100):
+def irnn(data_shape=(None, 784, 1), nb_classes=10,
+         learning_rate=1e-6, hidden_units=100):
     #clip_norm = 1.0
 
     print('Evaluate IRNN...')
@@ -388,7 +390,8 @@ def transfer_learning(data_shape=(28, 28, 1), nb_classes=5):
     # train model with gt5
 
 
-def identity_model(test=None, inpt=Input(shape=(28,28,1)), nb_filters=64, nb_classes=10):
+def identity_model(test=None, inpt=Input(shape=(28, 28, 1)),
+                   nb_filters=64, nb_classes=10):
     #x1 = Dropout(0.2)(inpt)
     x = Convolution2D(32, 3, 3, activation='relu')(inpt)
     x = Convolution2D(32, 3, 3, activation='relu')(x)
@@ -734,6 +737,5 @@ def cnn_lle(data_shape, nb_classes=10):
     model.compile(loss='categorical_crossentropy',
                   optimizer=RMSprop(lr=1e-3),
                   metrics=['accuracy'])
-
 
     return model
