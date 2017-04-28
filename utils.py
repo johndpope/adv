@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.metrics import log_loss
+from sklearn.metrics import classification_report
 from matplotlib import pyplot as plt
 
 
@@ -14,10 +14,10 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
     results = []
     names = []
     counter = 1
+    skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
     for name, model in models:
         print("\n\nTesting model {}\n".format(name))
         model.summary()
-        skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
         for tr_id, te_id in skf.split(X, np.argmax(Y, axis=1)):
             print("Fold {}".format(counter))
             trX, teX = X[tr_id], X[te_id]
@@ -29,13 +29,13 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
                 trX = trX.reshape(-1, 784, 1)
                 teX = teX.reshape(-1, 784, 1)
             model.fit(trX, trY, nb_epoch=nb_epochs, batch_size=batch_size,
-                      verbose=1)
-            teY_pred = model.predict_proba(teX)
-            cv_results.append(log_loss(teY, teY_pred))
+                      validation_split=0.2, verbose=1)
+            teY_pred = model.predict(teX)
+            scores = model.evaluate(teX, teY, verbose=0)
+            report = classification_report(teY, teY_pred)
+            cv_results.append(scores[1] * 100)
             counter += 1
-        # cv_results = cross_val_score(model, X, Y, cv=kf, scoring='accuracy')
-        results.append(cv_results)
-        results.append(cv_results)
+        results.append([np.mean(cv_results), np.std(cv_results)])
         names.append(name)
         print("\nmodel = {}, mean = {}, std = {}".format(name,
                                                        np.mean(results),
@@ -45,6 +45,7 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
     fig.suptitle('Algorithm Comparison')
     ax = fig.add_subplot(111)
     plt.boxplot(results)
+    plt.ylabel('Accuracy')
     ax.set_xticklabels(names)
     plt.show()
 
