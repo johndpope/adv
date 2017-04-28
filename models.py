@@ -278,8 +278,6 @@ def mlp(data_shape=(784,)):
     model.add(Dense(10))
     model.add(Activation('softmax'))
 
-    model.summary()
-
     model.compile(loss='categorical_crossentropy',
                   optimizer=RMSprop(),
                   metrics=['accuracy'])
