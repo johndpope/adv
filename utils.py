@@ -8,28 +8,37 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
     """
     models: list of tuples [('model name', model object), ...]
     X: training data
-    Y: labels
+    Y: labels, should be one-hot and not clipped
     """
     cv_results = []
     results = []
     names = []
+    counter = 1
     for name, model in models:
-        print("Testing model {}".format(name))
+        print("\nTesting model {}\n".format(name))
         skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
         for tr_id, te_id in skf.split(X, np.argmax(Y, axis=1)):
+            print("Fold {}".format(counter))
             trX, teX = X[tr_id], X[te_id]
             trY, teY = Y[tr_id], Y[te_id]
+            if name == "mlp":
+                trX = trX.reshape(-1, 784)
+                teX = teX.reshape(-1, 784)
+            elif name == "irnn":
+                trX = trX.reshape(-1, 784, 1)
+                teX = teX.reshape(-1, 784, 1)
             model.fit(trX, trY, nb_epoch=nb_epochs, batch_size=batch_size,
                       verbose=1)
-            predictions = model.predict(teX)
-            cv_results.append(log_loss(np.argmax(teY, axis=1),
-                                       np.argmax(predictions, axis=1)))
+            teY_pred = model.predict_proba(teX)
+            cv_results.append(log_loss(teY, teY_pred))
+            counter += 1
         # cv_results = cross_val_score(model, X, Y, cv=kf, scoring='accuracy')
         results.append(cv_results)
+        results.append(cv_results)
         names.append(name)
-        print("model = {}, mean = {}, std = {}".format(name,
-                                                       cv_results.mean(),
-                                                       cv_results.std()))
+        print("\nmodel = {}, mean = {}, std = {}".format(name,
+                                                       np.mean(results),
+                                                       np.std(results))
     # boxplot algorithm comparison
     fig = plt.figure()
     fig.suptitle('Algorithm Comparison')
