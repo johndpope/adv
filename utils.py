@@ -40,7 +40,7 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
         names.append(name)
         print("\nmodel = {}, mean = {}, std = {}".format(name,
                                                        np.mean(results),
-                                                       np.std(results))
+                                                       np.std(results)))
     # boxplot algorithm comparison
     fig = plt.figure()
     fig.suptitle('Algorithm Comparison')
