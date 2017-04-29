@@ -32,7 +32,8 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
                       validation_split=0.2, verbose=1)
             teY_pred = model.predict(teX)
             scores = model.evaluate(teX, teY, verbose=0)
-            report = classification_report(teY, teY_pred)
+            report = classification_report(np.argmax(teY, axis=1),
+                                           np.argmax(teY_pred, axis=1))
             print(report)
             cv_results.append(scores[1] * 100)
             counter += 1
