@@ -16,7 +16,7 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
     counter = 1
     skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
     for name, model in models:
-        print("\n\nTesting model {}\n".format(name))
+        print("\n\nTesting model {}, Fold {}\n".format(name, counter))
         model.summary()
         for tr_id, te_id in skf.split(X, np.argmax(Y, axis=1)):
             print("Fold {}".format(counter))

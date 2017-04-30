@@ -99,7 +99,7 @@ if __name__ == "__main__":
     y = tf.placeholder(tf.float32, shape=(None, 10))
 
     # Define TF model graph
-    model = args.model()
+    model = eval(args.model + '()')
     model.summary()
     predictions = model(x)
     # model.fit(X_train, Y_train, nb_epoch=1000, batch_size=500, shuffle=True,
@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
     print("Repeating the process, using adversarial training")
     # Redefine TF model graph
-    model_2 = args.model()
+    model_2 = eval(args.model + '()')
     predictions_2 = model_2(x)
     adv_x_2 = fgsm(x, predictions_2, eps=0.3)
     predictions_2_adv = model_2(adv_x_2)
