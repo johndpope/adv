@@ -16,7 +16,7 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
     counter = 1
     skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
     for name, model in models:
-        print("\n\nTesting model {}, Fold {}\n".format(name, counter))
+        print("\n\nTesting model {}\n".format(name, counter))
         model.summary()
         for tr_id, te_id in skf.split(X, np.argmax(Y, axis=1)):
             print("Fold {}".format(counter))
@@ -28,7 +28,7 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
             elif name == "irnn":
                 trX = trX.reshape(-1, 784, 1)
                 teX = teX.reshape(-1, 784, 1)
-            model.fit(trX, trY, nb_epoch=nb_epochs, batch_size=batch_size,
+            model.fit(trX, trY, nb_epoch=2, batch_size=batch_size,
                       validation_split=0.2, verbose=1)
             scores = model.evaluate(teX, teY, verbose=0)
             cv_results.append(scores[1] * 100)
