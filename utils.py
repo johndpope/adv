@@ -42,13 +42,13 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
                                        np.argmax(teY_pred, axis=1))
         print(report)
     # boxplot algorithm comparison
-    fig = plt.figure()
-    fig.suptitle('Algorithm Comparison')
-    ax = fig.add_subplot(111)
-    plt.boxplot(results)
-    plt.ylabel('Accuracy')
-    ax.set_xticklabels(names)
-    plt.show()
+    # fig = plt.figure()
+    # fig.suptitle('Algorithm Comparison')
+    # ax = fig.add_subplot(111)
+    # plt.boxplot(results)
+    # plt.ylabel('Accuracy')
+    # ax.set_xticklabels(names)
+    # plt.show()
 
 
 def plot_mnist(X, y, X_embedded, name, min_dist=10.0):
