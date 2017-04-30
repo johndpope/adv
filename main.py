@@ -9,7 +9,7 @@ import tensorflow as tf
 import keras
 from keras.datasets import mnist
 from keras.utils import np_utils
-from keras.utils.visualize_util import plot
+# from keras.utils.visualize_util import plot
 from sklearn.model_selection import train_test_split
 
 # from cleverhans.utils_mnist import data_mnist, data_cifar
