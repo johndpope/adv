@@ -1,10 +1,11 @@
 import numpy as np
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from xgboost import XGBClassifier, plot_importance
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import classification_report
 from matplotlib import pyplot as plt
 
 
-def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
+def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
     """
     models: list of tuples [('model name', model object), ...]
     X: training data
@@ -28,11 +29,12 @@ def rank_classifiers(models, X, Y, nb_epochs=2, batch_size=128):
             elif name == "irnn":
                 trX = trX.reshape(-1, 784, 1)
                 teX = teX.reshape(-1, 784, 1)
-            model.fit(trX, trY, nb_epoch=2, batch_size=batch_size,
+            model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
                       validation_split=0.2, verbose=1)
             scores = model.evaluate(teX, teY, verbose=0)
-            cv_results.append(scores[1] * 100)
+            cv_results.append(scores[1])
             counter += 1
+        counter = 1
         results.append([np.mean(cv_results), np.std(cv_results)])
         names.append(name)
         print("\nmodel = {}, mean = {}, std = {}"
@@ -76,3 +78,14 @@ def plot_mnist(X, y, X_embedded, name, min_dist=10.0):
                                       cmap=plt.cm.gray_r),
                 X_embedded[i])
             ax.add_artist(imagebox)
+
+
+def grad_cam():
+    pass
+
+
+def rank_features(X, y):
+    model = XGBClassifier()
+    model.fit(X, y)
+    print(model.feature_importances_)
+    plot_importance(model)
