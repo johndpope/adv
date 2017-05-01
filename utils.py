@@ -1,7 +1,10 @@
 import numpy as np
 from xgboost import XGBClassifier, plot_importance
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import classification_report
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.feature_selection import SelectFromModel
+from deap import algorithms, base, creator, tools
+from scipy.spatial import distance
 from matplotlib import pyplot as plt
 
 
@@ -89,3 +92,206 @@ def rank_features(X, y):
     model.fit(X, y)
     print(model.feature_importances_)
     plot_importance(model)
+    X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                        test_size=0.33,
+                                                        random_state=7)
+    # make predictions for test data and evaluate
+    y_pred = model.predict(X_test)
+    predictions = [round(value) for value in y_pred]
+    accuracy = accuracy_score(y_test, predictions)
+    print("Accuracy: {}%%".format(accuracy * 100.0))
+    # Fit model using each importance as a threshold
+    thresholds = np.sort(model.feature_importances_)
+    for thresh in thresholds:
+        # select features using threshold
+        selection = SelectFromModel(model, threshold=thresh, prefit=True)
+        select_X_train = selection.transform(X_train)
+        # train model
+        selection_model = XGBClassifier()
+        selection_model.fit(select_X_train, y_train)
+        # eval model
+        select_X_test = selection.transform(X_test)
+        y_pred = selection_model.predict(select_X_test)
+        predictions = [round(value) for value in y_pred]
+        accuracy = accuracy_score(y_test, predictions)
+        print("Thresh={}, n={}, Accuracy: {}%%".format(thresh,
+                                                       select_X_train.shape[1],
+                                                       accuracy * 100.0))
+
+
+def flatten_parameters(model):
+    """
+    Gets the weights from the network layers and puts them in one flat
+    parameter vector
+    """
+    return np.concatenate([layer.flatten() for layer in model.get_weights()])
+
+
+def update_model_weights(model, new_weights):
+    """
+    Updates the network with new weights after they have been stored in one
+    flat parameter vector
+    """
+    accum = 0
+    for layer in model.layers:
+        current_layer_weights_list = layer.get_weights()
+        new_layer_weights_list = []
+        for layer_weights in current_layer_weights_list:
+            layer_total = np.prod(layer_weights.shape)
+            new_layer_weights_list.append(
+                new_weights[accum:accum + layer_total]
+                .reshape(layer_weights.shape))
+            accum += layer_total
+        layer.set_weights(new_layer_weights_list)
+
+
+def ga_fitness(individual):
+    sessionid  = multiprocessing.current_process()._identity[0]
+
+    # Instantiate the control policy
+    # Load the ConvNet weights
+    pretrained_weights_cnn = \
+         np.loadtxt('{}'.format(PRETRAINED_WEIGHTS_CNN))
+
+    POLICY = CNNRNNPolicy(cnn_weights=pretrained_weights_cnn)
+
+    # Instantiate the simulator environment
+    TORCS = pyclient.TORCS(episode_length=500,
+                           policy=POLICY,
+                           sessionid=sessionid)
+
+    # The GA will update the RNN parameters to evaluate candidate solutions
+    update_model_weights(POLICY.rnn, np.asarray(individual))
+    POLICY.rnn.reset_states()
+
+    # Run an episode on the track and its mirror image and measure the average
+    # fitness
+    fitness = 0
+
+    fitness1 = TORCS.run(track_id=1)
+    fitness2 = TORCS.run(track_id=2)
+
+    fitness = min(fitness1, fitness2)
+
+    return fitness,
+
+
+def run(num_gen, n, mutpb, cxpb):
+    """
+    Runs multiple episodes, evolving the RNN parameters using a GA
+    """
+    history = tools.History()
+    # Decorate the variation operators
+    toolbox.decorate("mate", history.decorator)
+    toolbox.decorate("mutate", history.decorator)
+
+    pool = multiprocessing.Pool(processes=12)
+    toolbox.register("map", pool.map)
+
+    pop = toolbox.population(n=n)
+    history.update(pop)
+
+    hof = tools.HallOfFame(1)
+    stats = tools.Statistics(lambda ind: ind.fitness.values)
+    stats.register("avg", np.mean)
+    stats.register("std", np.std)
+    stats.register("min", np.min)
+    stats.register("max", np.max)
+
+    pop, log = algorithms.eaSimple(pop,
+                                   toolbox,
+                                   cxpb=cxpb,
+                                   mutpb=mutpb,
+                                   ngen=num_gen,
+                                   stats=stats,
+                                   halloffame=hof,
+                                   verbose=True)
+
+    return pop, log, hof, history
+
+
+def setup_ga():
+    # Set up the genetic algorithm to evolve the RNN parameters
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+    creator.create("Individual", list, fitness=creator.FitnessMax)
+
+    INDIVIDUAL_SIZE = 33
+
+    toolbox = base.Toolbox()
+    toolbox.register("attr_float", np.random.uniform, -1.5, 1.5)
+    toolbox.register("individual",
+                     tools.initRepeat,
+                     creator.Individual,
+                     toolbox.attr_float,
+                     n=INDIVIDUAL_SIZE)
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+    toolbox.register("evaluate", ga_fitness)
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.5, indpb=0.10)
+
+    # Use tournament selection: choose a subset consisting of k members of that
+    # population, and from that subset, choose the best individual
+    toolbox.register("select", tools.selTournament, tournsize=2)
+
+
+def main():
+    try:
+        NUM_GENERATIONS = 100
+        POPULATION_SIZE = 96
+        MUTATION_PROB = 0.02
+        CROSSOVER_PROB = 0.5
+
+        pop, log, hof, history = \
+            run(num_gen=NUM_GENERATIONS,
+                n=POPULATION_SIZE,
+                cxpb=CROSSOVER_PROB,
+                mutpb=MUTATION_PROB)
+
+        best = np.asarray(hof)
+        gen = log.select("gen")
+        fitness_maxs = log.select("max")
+        fitness_avgs = log.select("avg")
+
+        # Plot the results
+        from matplotlib import pyplot as plt
+        plt.plot(fitness_maxs)  # , '.')
+        plt.plot(fitness_avgs)  # , '.')
+        plt.legend(['maximum', 'average'], loc=4)
+        plt.xlabel('Episode')
+        plt.ylabel('Fitness')
+
+        # Save the results to disk
+        np.savetxt('weights.out', best)
+        np.savetxt('fitness_avgs.out', fitness_avgs)
+        np.savetxt('fitness_maxs.out', fitness_maxs)
+
+        individuals = []
+        for i in history.genealogy_history.items():
+            individuals.append(i[1])
+        inp = np.array(individuals)
+        np.savetxt('history.out', inp)
+
+        plt.savefig('learning_history.png')
+        plt.show()
+
+        import IPython
+        IPython.embed()
+    finally:
+        pass
+
+
+def calculate_cnn_output(model, input):
+    output = model.predict(input)
+    output = output.reshape(output.shape[0], output.shape[1])
+
+    normalized_output = sklearn.preprocessing.normalize(output)
+
+    return normalized_output
+
+
+def calculate_fitness(feature_vectors):
+    pairwise_euclidean_distances = distance.pdist(feature_vectors, 'euclidean')
+    fitness = pairwise_euclidean_distances.mean() + \
+              pairwise_euclidean_distances.min()
+    return fitness

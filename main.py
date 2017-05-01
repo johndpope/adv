@@ -109,7 +109,7 @@ if __name__ == "__main__":
     # plot(identity, to_file='identity_model.png', show_shapes=True,
     #      show_layer_names=True)
 
-    train_params = {'nb_epochs': args.epoc,
+    train_params = {'nb_epochs': args.epochs,
                     'batch_size': args.batch_size,
                     'learning_rate': 1e-3}
     eval_params = {'batch_size': args.batch_size}
