@@ -124,8 +124,8 @@ if __name__ == "__main__":
         return accuracy
 
     model_train(sess, x, y, predictions, X_train, Y_train,
-                evaluate=evaluate(sess, x, y, predictions, X_val, Y_val,
-                                  args=eval_params),
+                evaluate=evaluate_legit(sess, x, y, predictions, X_val, Y_val,
+                                        args=eval_params),
                 args=train_params)
 
     # Craft adversarial examples using Fast Gradient Sign Method (FGSM)
