@@ -146,24 +146,25 @@ if __name__ == "__main__":
     adv_x_2 = fgsm(x, predictions_2, eps=0.3)
     predictions_2_adv = model_2(adv_x_2)
 
-    # def evaluate_adversarial():
-    # Evaluate the accuracy of the adversarialy trained MNIST model on
-    # legitimate test examples
-    adv2_accuracy = model_eval(sess, x, y, predictions_2, X_test, Y_test,
-                               args=eval_params)
-    print("Test accuracy on legitimate test examples: {}"
-          .format(adv2_accuracy))
+    def evaluate_adversarial():
+        # Evaluate the accuracy of the adversarialy trained MNIST model on
+        # legitimate test examples
+        adv2_accuracy = model_eval(sess, x, y, predictions_2, X_test, Y_test,
+                                   args=eval_params)
+        print("Test accuracy on legitimate test examples: {}"
+              .format(adv2_accuracy))
 
-    # Evaluate the accuracy of the adversarially trained MNIST model on
-    # adversarial examples
-    adv3_accuracy = model_eval(sess, x, y, predictions_2_adv, X_test,
-                               Y_test, args=eval_params)
-    print("Test accuracy on adversarial examples: {}"
-          .format(adv3_accuracy))
+        # Evaluate the accuracy of the adversarially trained MNIST model on
+        # adversarial examples
+        adv3_accuracy = model_eval(sess, x, y, predictions_2_adv, X_test,
+                                   Y_test, args=eval_params)
+        print("Test accuracy on adversarial examples: {}"
+              .format(adv3_accuracy))
 
     # Perform adversarial training
     model_train(sess, x, y, predictions_2, X_train, Y_train,
                 predictions_adv=predictions_2_adv,
-                evaluate=model_eval(sess, x, y, predictions_2_adv, X_test,
-                                    Y_test, args=eval_params),
+                evaluate=evaluate_adversarial(sess, x, y, predictions_2_adv,
+                                              X_test, Y_test,
+                                              args=eval_params),
                 args=train_params)
