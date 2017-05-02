@@ -212,8 +212,8 @@ def rank_features(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y,
                                                         test_size=0.33,
                                                         random_state=2017)
-    X_train = X_train[:, :round(X_train.shape[1]/2.)]
-    X_test = X_test[:, :round(X_test.shape[1]/2.)]
+    X_train = X_train[:, :int(X_train.shape[1]/2.)]
+    X_test = X_test[:, :int(X_test.shape[1]/2.)]
     model = XGBClassifier()
     model.fit(X, y)
     print(model.feature_importances_[
