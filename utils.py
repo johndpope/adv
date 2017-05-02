@@ -134,7 +134,7 @@ def get_classmap(model, X, nb_classes, batch_size, num_input_channels, ratio):
     return get_cmap([X])
 
 
-def plot_classmap(VGGCAM_weight_path, img_path, label,
+def plot_classmap(model, img_path, label,
                   nb_classes, num_input_channels=1024, ratio=16):
     """
     Plot class activation map of trained VGGCAM model
@@ -147,9 +147,9 @@ def plot_classmap(VGGCAM_weight_path, img_path, label,
           ratio (int) upsampling ratio (16 * 14 = 224)
     """
 
-    # Load and compile model
-    model = VGGCAM(nb_classes, num_input_channels)
-    model.load_weights(VGGCAM_weight_path)
+    # Load, add number of classes and input channels and compile model
+    # model = VGGCAM(nb_classes, num_input_channels)
+    # model.load_weights(VGGCAM_weight_path)
     model.compile(loss="categorical_crossentropy", optimizer="sgd")
 
     # Load and format data
@@ -157,10 +157,10 @@ def plot_classmap(VGGCAM_weight_path, img_path, label,
     # Get a copy of the original image
     im_ori = im.copy().astype(np.uint8)
     # VGG model normalisations
-    im[:,:,0] -= 103.939
-    im[:,:,1] -= 116.779
-    im[:,:,2] -= 123.68
-    im = im.transpose((2,0,1))
+    im[:, :, 0] -= 103.939
+    im[:, :, 1] -= 116.779
+    im[:, :, 2] -= 123.68
+    im = im.transpose((2, 0, 1))
 
     batch_size = 1
     classmap = get_classmap(model,
@@ -187,7 +187,7 @@ def get_output_layer(model, layer_name):
 
 
 def visualize_class_activation_map(model, img_path, output_path,
-                                   layer_name="conv5_3"):
+                                   layer_name="conv5_3", target_class=1):
         # model = load_model(model_path)
         original_img = cv2.imread(img_path, 1)
         width, height, _ = original_img.shape
@@ -197,7 +197,7 @@ def visualize_class_activation_map(model, img_path, output_path,
 
         # Get the 512 input weights to the softmax.
         class_weights = model.layers[-1].get_weights()[0]
-        final_conv_layer = model.get_output_layer(model, "conv5_3")
+        final_conv_layer = model.get_output_layer(model, layer_name)
         get_output = K.function([model.layers[0].input],
                                 [final_conv_layer.output,
                                  model.layers[-1].output])
@@ -206,14 +206,14 @@ def visualize_class_activation_map(model, img_path, output_path,
 
         # Create the class activation map.
         cam = np.zeros(dtype=np.float32, shape=conv_outputs.shape[1:3])
-        for i, w in enumerate(class_weights[:, 1]):
+        for i, w in enumerate(class_weights[:, target_class]):
                 cam += w * conv_outputs[i, :, :]
         print("predictions", predictions)
         cam /= np.max(cam)
         cam = cv2.resize(cam, (height, width))
         heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
         heatmap[np.where(cam < 0.2)] = 0
-        img = heatmap*0.5 + original_img
+        img = heatmap * 0.5 + original_img
         cv2.imwrite(output_path, img)
 
 
@@ -230,7 +230,7 @@ def rank_features(X, y):
     model.fit(X, y)
     print(model.feature_importances_[
         np.where(model.feature_importances_ > 0)])
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(50, 20))
     plot_importance(model)
     plt.show()
     # make predictions for test data and evaluate
