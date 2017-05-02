@@ -18,7 +18,7 @@ from cleverhans.attacks import fgsm
 from cleverhans.utils import cnn_model, pair_visual, grid_visual
 from models import hierarchical, irnn, mlp, siamese, identity_model
 from models import mlp_lle, cnn_lle, cnn_model
-from utils import rank_classifiers
+from utils import rank_classifiers, rank_features
 
 
 if __name__ == "__main__":
@@ -93,6 +93,7 @@ if __name__ == "__main__":
     #           ("identity_model", idd)]
 
     # rank_classifiers(models, X_train, Y_train)
+    # rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
     # import pdb
     # pdb.set_trace()
     # Define input TF placeholder

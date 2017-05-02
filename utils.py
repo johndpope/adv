@@ -3,6 +3,7 @@ from xgboost import XGBClassifier, plot_importance
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.feature_selection import SelectFromModel
+from sklearn.preprocessing import normalize
 from deap import algorithms, base, creator, tools
 from scipy.spatial import distance
 from matplotlib import pyplot as plt
@@ -38,7 +39,8 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
             cv_results.append(scores[1])
             counter += 1
         counter = 1
-        results.append([np.mean(cv_results), np.std(cv_results)])
+        # results.append([np.mean(cv_results), np.std(cv_results)])
+        results.append(cv_results)
         names.append(name)
         print("\nmodel = {}, mean = {}, std = {}"
               .format(name, np.mean(results), np.std(results)))
@@ -47,13 +49,13 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
                                        np.argmax(teY_pred, axis=1))
         print(report)
     # boxplot algorithm comparison
-    # fig = plt.figure()
-    # fig.suptitle('Algorithm Comparison')
-    # ax = fig.add_subplot(111)
-    # plt.boxplot(results)
-    # plt.ylabel('Accuracy')
-    # ax.set_xticklabels(names)
-    # plt.show()
+    fig = plt.figure()
+    fig.suptitle('Algorithm Comparison')
+    ax = fig.add_subplot(111)
+    plt.boxplot(results)
+    plt.ylabel('Accuracy')
+    ax.set_xticklabels(names)
+    plt.show()
 
 
 def plot_mnist(X, y, X_embedded, name, min_dist=10.0):
@@ -88,13 +90,16 @@ def grad_cam():
 
 
 def rank_features(X, y):
+    if X.ndim > 2 or y.ndim == 2:
+        raise ValueError("X should be 2d array while "
+                         "y should be 1d label array.")
+    X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                        test_size=0.33,
+                                                        random_state=7)
     model = XGBClassifier()
     model.fit(X, y)
     print(model.feature_importances_)
     plot_importance(model)
-    X_train, X_test, y_train, y_test = train_test_split(X, y,
-                                                        test_size=0.33,
-                                                        random_state=7)
     # make predictions for test data and evaluate
     y_pred = model.predict(X_test)
     predictions = [round(value) for value in y_pred]
@@ -285,13 +290,13 @@ def calculate_cnn_output(model, input):
     output = model.predict(input)
     output = output.reshape(output.shape[0], output.shape[1])
 
-    normalized_output = sklearn.preprocessing.normalize(output)
+    normalized_output = normalize(output)
 
     return normalized_output
 
 
 def calculate_fitness(feature_vectors):
     pairwise_euclidean_distances = distance.pdist(feature_vectors, 'euclidean')
-    fitness = pairwise_euclidean_distances.mean() + \
-              pairwise_euclidean_distances.min()
+    fitness = pairwise_euclidean_distances.mean()
+    + pairwise_euclidean_distances.min()
     return fitness
