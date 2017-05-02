@@ -1,5 +1,6 @@
 import numpy as np
 from keras import backend as K
+from keras.layers import Lambda
 from xgboost import XGBClassifier, plot_importance
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import classification_report, accuracy_score
@@ -94,6 +95,13 @@ def grad_cam():
     resized = tf.image.resize_images(input_tensor, [new_height, new_width])
     resized = tf.image.resize_bilinear(input_tensor, [new_height, new_width],
                                        align_corners=None)
+
+
+def gap_layer(model):
+    model.add(Lambda(global_average_pooling,
+                     output_shape=global_average_pooling_shape))
+
+    return model
 
 
 def get_classmap(model, X, nb_classes, batch_size, num_input_channels, ratio):
@@ -212,8 +220,8 @@ def rank_features(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y,
                                                         test_size=0.33,
                                                         random_state=2017)
-    X_train = X_train[:, :int(X_train.shape[1]/2.)]
-    X_test = X_test[:, :int(X_test.shape[1]/2.)]
+    X_train = X_train[:, :10]
+    X_test = X_test[:, :10]
     model = XGBClassifier()
     model.fit(X, y)
     print(model.feature_importances_[
@@ -226,8 +234,9 @@ def rank_features(X, y):
     accuracy = accuracy_score(y_test, predictions)
     print("Accuracy: {}%%".format(accuracy * 100.0))
     # Fit model using each importance as a threshold
-    thresholds = np.sort(model.feature_importances_[
-        np.where(model.feature_importances_ > 0)])
+    # thresholds = np.sort(model.feature_importances_[
+    #     np.where(model.feature_importances_ > 0)])
+    thresholds = np.sort(model.feature_importances_)
     for thresh in thresholds:
         # select features using threshold
         selection = SelectFromModel(model, threshold=thresh, prefit=True)
