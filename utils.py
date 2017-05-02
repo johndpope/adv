@@ -40,6 +40,8 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
             counter += 1
         counter = 1
         # results.append([np.mean(cv_results), np.std(cv_results)])
+        import pdb
+        pdb.set_trace()
         results.append(cv_results)
         names.append(name)
         print("\nmodel = {}, mean = {}, std = {}"
