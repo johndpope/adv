@@ -97,7 +97,7 @@ def grad_cam():
                                        align_corners=None)
 
 
-def gap_layer(model):
+def global_avg_pooling_layer(model):
     model.add(Lambda(global_average_pooling,
                      output_shape=global_average_pooling_shape))
 
@@ -108,8 +108,8 @@ def get_classmap(model, X, nb_classes, batch_size, num_input_channels, ratio):
     from theano.tensor import absconv
 
     inc = model.layers[0].input
-    conv6 = model.layers[-4].output  # this corresponds to the flatten
-    # layer's output from vgg16
+    conv6 = model.layers[-4].output  # this corresponds to the last
+    # conv layer's output from vgg16
     conv6_resized = absconv.bilinear_upsampling(conv6,
                                                 ratio,
                                                 batch_size=batch_size,
@@ -220,12 +220,13 @@ def rank_features(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y,
                                                         test_size=0.33,
                                                         random_state=2017)
-    X_train = X_train[:, :10]
-    X_test = X_test[:, :10]
+    # X_train = X_train[:, :10]
+    # X_test = X_test[:, :10]
     model = XGBClassifier()
     model.fit(X, y)
     print(model.feature_importances_[
         np.where(model.feature_importances_ > 0)])
+    plt.figure(size=(10,10))
     plot_importance(model)
     plt.show()
     # make predictions for test data and evaluate
@@ -234,9 +235,9 @@ def rank_features(X, y):
     accuracy = accuracy_score(y_test, predictions)
     print("Accuracy: {}%%".format(accuracy * 100.0))
     # Fit model using each importance as a threshold
-    # thresholds = np.sort(model.feature_importances_[
-    #     np.where(model.feature_importances_ > 0)])
-    thresholds = np.sort(model.feature_importances_)
+    thresholds = np.sort(model.feature_importances_[
+        np.where(model.feature_importances_ > 0)])
+    # thresholds = np.sort(model.feature_importances_)
     for thresh in thresholds:
         # select features using threshold
         selection = SelectFromModel(model, threshold=thresh, prefit=True)
