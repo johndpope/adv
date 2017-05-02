@@ -7,15 +7,15 @@ import numpy as np
 import argparse
 import tensorflow as tf
 import keras
-from keras.datasets import mnist
+# from keras.datasets import mnist
 from keras.utils import np_utils
 # from keras.utils.visualize_util import plot
 from sklearn.model_selection import train_test_split
 
-# from cleverhans.utils_mnist import data_mnist, data_cifar
-# from cleverhans.utils_tf import model_train, model_eval, batch_eval
-# from cleverhans.attacks import fgsm
-# from cleverhans.utils import cnn_model, pair_visual, grid_visual
+from cleverhans.utils_mnist import data_mnist
+from cleverhans.utils_tf import model_train, model_eval, batch_eval
+from cleverhans.attacks import fgsm
+from cleverhans.utils import cnn_model, pair_visual, grid_visual
 from models import hierarchical, irnn, mlp, siamese, identity_model
 from models import mlp_lle, cnn_lle, cnn_model
 from utils import rank_classifiers
@@ -51,11 +51,12 @@ if __name__ == "__main__":
     # Create TF session and set as Keras backend session
     sess = tf.Session()
     keras.backend.set_session(sess)
+    # sess.run(tf.global_variables_initializer())
 
     # Get test data
     if args.dataset == "mnist":
-        (X, Y), (X_test, Y_test) = mnist.load_data()
-        # X, Y, X_test, Y_test = data_mnist()
+        # (X, Y), (X_test, Y_test) = mnist.load_data()
+        X, Y, X_test, Y_test = data_mnist()
     elif args.dataset == "cifar":
         X, Y, X_test, Y_test = data_cifar()
     elif args.dataset == "mnist_lle":
@@ -80,20 +81,20 @@ if __name__ == "__main__":
     # label_smooth = .1
     # Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
 
-    cnn = cnn_model()
-    per = mlp()
-    hr = hierarchical()
-    ir = irnn()
-    idd = identity_model()
-    models = [("cnn_model", cnn),
-              ("mlp", per),
-              ("hierarchical", hr),
-              ("irnn", ir),
-              ("identity_model", idd)]
+    # cnn = cnn_model()
+    # per = mlp()
+    # hr = hierarchical()
+    # ir = irnn()
+    # idd = identity_model()
+    # models = [("cnn_model", cnn),
+    #           ("mlp", per),
+    #           ("hierarchical", hr),
+    #           ("irnn", ir),
+    #           ("identity_model", idd)]
 
-    rank_classifiers(models, X_train, Y_train)
-    import pdb
-    pdb.set_trace()
+    # rank_classifiers(models, X_train, Y_train)
+    # import pdb
+    # pdb.set_trace()
     # Define input TF placeholder
     x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
     y = tf.placeholder(tf.float32, shape=(None, 10))
@@ -113,17 +114,18 @@ if __name__ == "__main__":
                     'batch_size': args.batch_size,
                     'learning_rate': 1e-3}
     eval_params = {'batch_size': args.batch_size}
-    accuracy = model_eval(sess, x, y, predictions,
-                          X_val, Y_val, args=eval_params)
+
+    def evaluate_legit(sess, x, y, predictions, X, Y, args=eval_params):
+        accuracy = model_eval(sess, x, y, predictions,
+                              X_val, Y_val, args=eval_params)
+        print("Test accuracy on legitimate test examples: {}"
+              .format(accuracy))
+        return accuracy
 
     model_train(sess, x, y, predictions, X_train, Y_train,
-                evaluate=model_eval(sess, x, y, predictions,
-                                    X_val, Y_val,
-                                    args=eval_params),
+                evaluate=evaluate(sess, x, y, predictions, X_val, Y_val,
+                                  args=eval_params),
                 args=train_params)
-
-    print("Test accuracy on legitimate test examples: {}"
-          .format(accuracy))
 
     # Craft adversarial examples using Fast Gradient Sign Method (FGSM)
     adv_x = fgsm(x, predictions, eps=0.3)
@@ -143,6 +145,7 @@ if __name__ == "__main__":
     adv_x_2 = fgsm(x, predictions_2, eps=0.3)
     predictions_2_adv = model_2(adv_x_2)
 
+    # def evaluate_adversarial():
     # Evaluate the accuracy of the adversarialy trained MNIST model on
     # legitimate test examples
     adv2_accuracy = model_eval(sess, x, y, predictions_2, X_test, Y_test,
