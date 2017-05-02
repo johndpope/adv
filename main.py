@@ -78,8 +78,8 @@ if __name__ == "__main__":
         Y_test = np_utils.to_categorical(Y_test, 10)
         Y_val = np_utils.to_categorical(Y_val, 10)
 
-    # label_smooth = .1
-    # Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
+    label_smooth = .1
+    Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
 
     # cnn = cnn_model()
     # per = mlp()
