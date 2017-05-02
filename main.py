@@ -116,7 +116,7 @@ if __name__ == "__main__":
                     'learning_rate': 1e-3}
     eval_params = {'batch_size': args.batch_size}
 
-    def evaluate_legit(sess, x, y, predictions, X, Y, args=eval_params):
+    def evaluate_legit():
         accuracy = model_eval(sess, x, y, predictions,
                               X, Y, args=eval_params)
         print("Test accuracy on legitimate test examples: {}"
@@ -124,9 +124,7 @@ if __name__ == "__main__":
         return accuracy
 
     model_train(sess, x, y, predictions, X_train, Y_train,
-                evaluate=evaluate_legit(sess, x, y, predictions, X_val, Y_val,
-                                        args=eval_params),
-                args=train_params)
+                evaluate=evaluate_legit, args=train_params)
 
     # Craft adversarial examples using Fast Gradient Sign Method (FGSM)
     adv_x = fgsm(x, predictions, eps=0.3)
@@ -164,7 +162,4 @@ if __name__ == "__main__":
     # Perform adversarial training
     model_train(sess, x, y, predictions_2, X_train, Y_train,
                 predictions_adv=predictions_2_adv,
-                evaluate=evaluate_adversarial(sess, x, y, predictions_2_adv,
-                                              X_test, Y_test,
-                                              args=eval_params),
-                args=train_params)
+                evaluate=evaluate_adversarial, args=train_params)
