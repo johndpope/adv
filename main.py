@@ -29,6 +29,8 @@ if __name__ == "__main__":
                         "and testing the model")
     parser.add_argument("-e", "--epochs", type=int, default=15,
                         help="Nb of epochs for training")
+    parser.add_argument("-lr", "--learning_rate", type=float, default=0.1,
+                        help="Nb of epochs for training")
     parser.add_argument("-m", "--model", type=str, default="cnn_model",
                         help="The model used for taining and"
                         "testing against adversarial attacks")
@@ -113,7 +115,7 @@ if __name__ == "__main__":
 
     train_params = {'nb_epochs': args.epochs,
                     'batch_size': args.batch_size,
-                    'learning_rate': 1e-3}
+                    'learning_rate': args.learning_rate}
     eval_params = {'batch_size': args.batch_size}
 
     def evaluate_legit():
