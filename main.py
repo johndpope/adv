@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     X_train, X_val, Y_train, Y_val = train_test_split(X, Y,
                                                       test_size=0.15,
-                                                      random_state=42)
+                                                      random_state=2017)
     X_train = X_train.reshape(-1, 28, 28, 1)
     X_test = X_test.reshape(-1, 28, 28, 1)
 
@@ -95,9 +95,9 @@ if __name__ == "__main__":
     #           ("identity_model", idd)]
 
     # rank_classifiers(models, X_train, Y_train)
-    # rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
-    # import pdb
-    # pdb.set_trace()
+    rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
+    import pdb
+    pdb.set_trace()
     # Define input TF placeholder
     x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
     y = tf.placeholder(tf.float32, shape=(None, 10))
