@@ -95,6 +95,112 @@ def grad_cam():
                                        align_corners=None)
 
 
+def get_classmap(model, X, nb_classes, batch_size, num_input_channels, ratio):
+
+    inc = model.layers[0].input
+    conv6 = model.layers[-4].output
+    conv6_resized = absconv.bilinear_upsampling(conv6,
+                                                ratio,
+                                                batch_size=batch_size,
+                                                num_input_channels=num_input_channels)
+    WT = model.layers[-1].W.T
+    conv6_resized = K.reshape(conv6_resized,
+                              (-1, num_input_channels, 224 * 224))
+    classmap = K.dot(WT, conv6_resized).reshape((-1, nb_classes, 224, 224))
+    get_cmap = K.function([inc], classmap)
+    return get_cmap([X])
+
+
+def plot_classmap(VGGCAM_weight_path, img_path, label,
+                  nb_classes, num_input_channels=1024, ratio=16):
+    """
+    Plot class activation map of trained VGGCAM model
+    args: VGGCAM_weight_path (str) path to trained keras VGGCAM weights
+          img_path (str) path to the image for which we get the activation map
+          label (int) label (0 to nb_classes-1) of the class activation map to plot
+          nb_classes (int) number of classes
+          num_input_channels (int) number of conv filters to add
+                                   in before the GAP layer
+          ratio (int) upsampling ratio (16 * 14 = 224)
+    """
+
+    # Load and compile model
+    model = VGGCAM(nb_classes, num_input_channels)
+    model.load_weights(VGGCAM_weight_path)
+    model.compile(loss="categorical_crossentropy", optimizer="sgd")
+
+    # Load and format data
+    im = cv2.resize(cv2.imread(img_path), (224, 224)).astype(np.float32)
+    # Get a copy of the original image
+    im_ori = im.copy().astype(np.uint8)
+    # VGG model normalisations
+    im[:,:,0] -= 103.939
+    im[:,:,1] -= 116.779
+    im[:,:,2] -= 123.68
+    im = im.transpose((2,0,1))
+
+    batch_size = 1
+    classmap = get_classmap(model,
+                            im.reshape(1, 3, 224, 224),
+                            nb_classes,
+                            batch_size,
+                            num_input_channels=num_input_channels,
+                            ratio=ratio)
+
+    plt.imshow(im_ori)
+    plt.imshow(classmap[0, label, :, :],
+               cmap="jet",
+               alpha=0.5,
+               interpolation='nearest')
+    plt.show()
+    raw_input()
+
+
+def global_average_pooling(x):
+    return K.mean(x, axis=(2, 3))
+
+
+def global_average_pooling_shape(input_shape):
+    return input_shape[0:2]
+
+
+def get_output_layer(model, layer_name):
+    # get the symbolic outputs of each "key" layer (we gave them unique names).
+    layer_dict = dict([(layer.name, layer) for layer in model.layers])
+    layer = layer_dict[layer_name]
+    return layer
+
+
+def visualize_class_activation_map(model_path, img_path, output_path):
+        model = load_model(model_path)
+        original_img = cv2.imread(img_path, 1)
+        width, height, _ = original_img.shape
+
+        # Reshape to the network input shape (3, w, h).
+        img = np.array([np.transpose(np.float32(original_img), (2, 0, 1))])
+
+        # Get the 512 input weights to the softmax.
+        class_weights = model.layers[-1].get_weights()[0]
+        final_conv_layer = model.get_output_layer(model, "conv5_3")
+        get_output = K.function([model.layers[0].input],
+                                [final_conv_layer.output,
+                                 model.layers[-1].output])
+        [conv_outputs, predictions] = get_output([img])
+        conv_outputs = conv_outputs[0, :, :, :]
+
+        # Create the class activation map.
+        cam = np.zeros(dtype=np.float32, shape=conv_outputs.shape[1:3])
+        for i, w in enumerate(class_weights[:, 1]):
+                cam += w * conv_outputs[i, :, :]
+        print("predictions", predictions)
+        cam /= np.max(cam)
+        cam = cv2.resize(cam, (height, width))
+        heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
+        heatmap[np.where(cam < 0.2)] = 0
+        img = heatmap*0.5 + original_img
+        cv2.imwrite(output_path, img)
+
+
 def rank_features(X, y):
     if X.ndim > 2 or y.ndim == 2:
         raise ValueError("X should be 2d array while "
@@ -104,17 +210,18 @@ def rank_features(X, y):
                                                         random_state=2017)
     model = XGBClassifier()
     model.fit(X, y)
-    print(model.feature_importances_)
+    print(model.feature_importances_[
+        np.where(model.feature_importances_ > 0)])
     plot_importance(model)
+    plt.show()
     # make predictions for test data and evaluate
     y_pred = model.predict(X_test)
     predictions = [round(value) for value in y_pred]
     accuracy = accuracy_score(y_test, predictions)
     print("Accuracy: {}%%".format(accuracy * 100.0))
     # Fit model using each importance as a threshold
-    thresholds = np.sort(model.feature_importances_)
-    import pdb
-    pdb.set_trace()
+    thresholds = np.sort(model.feature_importances_[
+        np.where(model.feature_importances_ > 0)])
     for thresh in thresholds:
         # select features using threshold
         selection = SelectFromModel(model, threshold=thresh, prefit=True)
