@@ -9,6 +9,7 @@ from sklearn.preprocessing import normalize
 from deap import algorithms, base, creator, tools
 from scipy.spatial import distance
 from matplotlib import pyplot as plt
+import cv2
 
 
 def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
@@ -89,12 +90,12 @@ def plot_mnist(X, y, X_embedded, name, min_dist=10.0):
             ax.add_artist(imagebox)
 
 
-def grad_cam():
-    new_height = int(round(old_height * scale))
-    new_width = int(round(old_width * scale))
-    resized = tf.image.resize_images(input_tensor, [new_height, new_width])
-    resized = tf.image.resize_bilinear(input_tensor, [new_height, new_width],
-                                       align_corners=None)
+def global_average_pooling(x):
+    return K.mean(x, axis=(2, 3))
+
+
+def global_average_pooling_shape(input_shape):
+    return input_shape[0:2]
 
 
 def global_avg_pooling_layer(model):
@@ -104,18 +105,28 @@ def global_avg_pooling_layer(model):
     return model
 
 
+def grad_cam():
+    passs
+
+
 def get_classmap(model, X, nb_classes, batch_size, num_input_channels, ratio):
+    """Notice: it requires theano as backend"""
     from theano.tensor import absconv
 
     inc = model.layers[0].input
     conv6 = model.layers[-4].output  # this corresponds to the last
     # conv layer's output from vgg16
+    # new_height = int(round(old_height * scale)) this could replace
+    # new_width = int(round(old_width * scale))   absconv from theano
+    # resized = tf.image.resize_images(input_tensor, [new_height, new_width])
+    # resized = tf.image.resize_bilinear(input_tensor, [new_height, new_width],
+    #                                    align_corners=None)
     conv6_resized = absconv.bilinear_upsampling(conv6,
                                                 ratio,
                                                 batch_size=batch_size,
                                                 num_input_channels=num_input_channels)
     WT = model.layers[-1].W.T  # this corresponds to the softmax layer
-    # of vgg16. The transpose operator doesn't work.
+    # of vgg16. The transpose operator doesn't work with tf.
     conv6_resized = K.reshape(conv6_resized,
                               (-1, num_input_channels, 224 * 224))
     classmap = K.dot(WT, conv6_resized).reshape((-1, nb_classes, 224, 224))
@@ -168,14 +179,6 @@ def plot_classmap(VGGCAM_weight_path, img_path, label,
     raw_input()
 
 
-def global_average_pooling(x):
-    return K.mean(x, axis=(2, 3))
-
-
-def global_average_pooling_shape(input_shape):
-    return input_shape[0:2]
-
-
 def get_output_layer(model, layer_name):
     # get the symbolic outputs of each "key" layer (we gave them unique names).
     layer_dict = dict([(layer.name, layer) for layer in model.layers])
@@ -183,8 +186,9 @@ def get_output_layer(model, layer_name):
     return layer
 
 
-def visualize_class_activation_map(model_path, img_path, output_path):
-        model = load_model(model_path)
+def visualize_class_activation_map(model, img_path, output_path,
+                                   layer_name="conv5_3"):
+        # model = load_model(model_path)
         original_img = cv2.imread(img_path, 1)
         width, height, _ = original_img.shape
 
@@ -226,7 +230,7 @@ def rank_features(X, y):
     model.fit(X, y)
     print(model.feature_importances_[
         np.where(model.feature_importances_ > 0)])
-    plt.figure(size=(10,10))
+    plt.figure(figsize=(10, 10))
     plot_importance(model)
     plt.show()
     # make predictions for test data and evaluate
