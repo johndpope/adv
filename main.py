@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     def evaluate_legit(sess, x, y, predictions, X, Y, args=eval_params):
         accuracy = model_eval(sess, x, y, predictions,
-                              X_val, Y_val, args=eval_params)
+                              X, Y, args=eval_params)
         print("Test accuracy on legitimate test examples: {}"
               .format(accuracy))
         return accuracy
