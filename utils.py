@@ -1,4 +1,5 @@
 import numpy as np
+from keras import backend as K
 from xgboost import XGBClassifier, plot_importance
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import classification_report, accuracy_score
@@ -96,14 +97,17 @@ def grad_cam():
 
 
 def get_classmap(model, X, nb_classes, batch_size, num_input_channels, ratio):
+    from theano.tensor import absconv
 
     inc = model.layers[0].input
-    conv6 = model.layers[-4].output
+    conv6 = model.layers[-4].output  # this corresponds to the flatten
+    # layer's output from vgg16
     conv6_resized = absconv.bilinear_upsampling(conv6,
                                                 ratio,
                                                 batch_size=batch_size,
                                                 num_input_channels=num_input_channels)
-    WT = model.layers[-1].W.T
+    WT = model.layers[-1].W.T  # this corresponds to the softmax layer
+    # of vgg16
     conv6_resized = K.reshape(conv6_resized,
                               (-1, num_input_channels, 224 * 224))
     classmap = K.dot(WT, conv6_resized).reshape((-1, nb_classes, 224, 224))
@@ -208,6 +212,8 @@ def rank_features(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y,
                                                         test_size=0.33,
                                                         random_state=2017)
+    X_train = X_train[:, :round(len(X_train.shape[1])/2.)]
+    X_test = X_test[:, :round(len(X_test.shape[1])/2.)]
     model = XGBClassifier()
     model.fit(X, y)
     print(model.feature_importances_[
