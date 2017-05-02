@@ -88,7 +88,11 @@ def plot_mnist(X, y, X_embedded, name, min_dist=10.0):
 
 
 def grad_cam():
-    pass
+    new_height = int(round(old_height * scale))
+    new_width = int(round(old_width * scale))
+    resized = tf.image.resize_images(input_tensor, [new_height, new_width])
+    resized = tf.image.resize_bilinear(input_tensor, [new_height, new_width],
+                                       align_corners=None)
 
 
 def rank_features(X, y):
@@ -97,7 +101,7 @@ def rank_features(X, y):
                          "y should be 1d label array.")
     X_train, X_test, y_train, y_test = train_test_split(X, y,
                                                         test_size=0.33,
-                                                        random_state=7)
+                                                        random_state=2017)
     model = XGBClassifier()
     model.fit(X, y)
     print(model.feature_importances_)
@@ -109,6 +113,8 @@ def rank_features(X, y):
     print("Accuracy: {}%%".format(accuracy * 100.0))
     # Fit model using each importance as a threshold
     thresholds = np.sort(model.feature_importances_)
+    import pdb
+    pdb.set_trace()
     for thresh in thresholds:
         # select features using threshold
         selection = SelectFromModel(model, threshold=thresh, prefit=True)
