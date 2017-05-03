@@ -4,12 +4,49 @@ from keras.layers import Lambda
 from xgboost import XGBClassifier, plot_importance
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import classification_report, accuracy_score
+from sklearn.metrics import roc_curve, auc
 from sklearn.feature_selection import SelectFromModel
 from sklearn.preprocessing import normalize
 from deap import algorithms, base, creator, tools
 from scipy.spatial import distance
 from matplotlib import pyplot as plt
 import cv2
+import multiprocessing as mp
+import itertools
+import scipy
+
+
+def roc_auc(teY, teY_pred, counter, color, mean_tpr, mean_fpr):
+    # Compute ROC curve and area under curve, main k-fold loop
+    fpr, tpr, thresholds = roc_curve(teY, teY_pred[:, 1])
+    mean_tpr += scipy.interp(mean_fpr, fpr, tpr)
+    mean_tpr[0] = 0.0
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, lw=2, color=color,
+             label='ROC fold {} (area = {:0.2f})'
+             .format(counter, roc_auc))
+
+    return mean_tpr, mean_fpr
+
+
+def plot_roc_auc(X, y, skf, mean_tpr, mean_fpr):
+    mean_tpr /= skf.get_n_splits(X, y)
+    mean_tpr[-1] = 1.0
+    mean_auc = auc(mean_fpr, mean_tpr)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='k',
+             label='Luck')
+    plt.plot(mean_fpr, mean_tpr, color='g', linestyle='--',
+             label='Mean ROC (area = {:0.2f})'.format(mean_auc, lw=2))
+    plt.xlim([-0.05, 1.05])
+    plt.ylim([-0.05, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic curve')
+    plt.legend(loc="lower right")
+    plt.show()
 
 
 def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
@@ -18,6 +55,10 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
     X: training data
     Y: labels, should be one-hot and not clipped
     """
+    colors = itertools.cycle(['cyan', 'indigo', 'seagreen', 'yellow',
+                              'blue', 'darkorange'])
+    mean_tpr = 0.0
+    mean_fpr = np.linspace(0, 1, 100)
     cv_results = []
     results = []
     names = []
@@ -26,7 +67,8 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
     for name, model in models:
         print("\n\nTesting model {}\n".format(name, counter))
         model.summary()
-        for tr_id, te_id in skf.split(X, np.argmax(Y, axis=1)):
+        for (tr_id, te_id), color in zip(skf.split(X, np.argmax(Y, axis=1)),
+                                         colors):
             print("Fold {}".format(counter))
             trX, teX = X[tr_id], X[te_id]
             trY, teY = Y[tr_id], Y[te_id]
@@ -39,10 +81,11 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
             model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
                       validation_split=0.2, verbose=1)
             scores = model.evaluate(teX, teY, verbose=0)
-            cv_results.append(scores[0])
+            teY_pred = model.predict(teX)
+            cv_results.append(scores[1])
+            mean_tpr, mean_fpr = roc_auc(teY, teY_pred, counter,
+                                         color, mean_tpr, mean_fpr)
             counter += 1
-        import pdb
-        pdb.set_trace()
         counter = 1
         print("\nmodel = {}, mean = {}, std = {}"
               .format(name, np.mean(cv_results), np.std(cv_results)))
@@ -283,12 +326,12 @@ def update_model_weights(model, new_weights):
 
 
 def ga_fitness(individual):
-    sessionid  = multiprocessing.current_process()._identity[0]
+    sessionid = mp.current_process()._identity[0]
 
     # Instantiate the control policy
     # Load the ConvNet weights
-    pretrained_weights_cnn = \
-         np.loadtxt('{}'.format(PRETRAINED_WEIGHTS_CNN))
+    pretrained_weights_cnn = np.loadtxt('{}'
+                                        .format(PRETRAINED_WEIGHTS_CNN))
 
     POLICY = CNNRNNPolicy(cnn_weights=pretrained_weights_cnn)
 
@@ -322,7 +365,7 @@ def run(num_gen, n, mutpb, cxpb):
     toolbox.decorate("mate", history.decorator)
     toolbox.decorate("mutate", history.decorator)
 
-    pool = multiprocessing.Pool(processes=12)
+    pool = mp.Pool(processes=12)
     toolbox.register("map", pool.map)
 
     pop = toolbox.population(n=n)
@@ -379,11 +422,10 @@ def main():
         MUTATION_PROB = 0.02
         CROSSOVER_PROB = 0.5
 
-        pop, log, hof, history = \
-            run(num_gen=NUM_GENERATIONS,
-                n=POPULATION_SIZE,
-                cxpb=CROSSOVER_PROB,
-                mutpb=MUTATION_PROB)
+        pop, log, hof, history = run(num_gen=NUM_GENERATIONS,
+                                     n=POPULATION_SIZE,
+                                     cxpb=CROSSOVER_PROB,
+                                     mutpb=MUTATION_PROB)
 
         best = np.asarray(hof)
         gen = log.select("gen")
