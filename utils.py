@@ -18,7 +18,9 @@ import scipy
 
 def roc_auc(teY, teY_pred, counter, color, mean_tpr, mean_fpr):
     # Compute ROC curve and area under curve, main k-fold loop
-    fpr, tpr, thresholds = roc_curve(teY, teY_pred[:, 1])
+    fpr, tpr, thresholds = roc_curve(np.argmax(teY, axis=1),
+                                     np.max(teY_pred, axis=1),
+                                     pos_label=counter)
     mean_tpr += scipy.interp(mean_fpr, fpr, tpr)
     mean_tpr[0] = 0.0
     roc_auc = auc(fpr, tpr)
@@ -62,7 +64,7 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
     cv_results = []
     results = []
     names = []
-    counter = 1
+    counter = 0
     skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
     for name, model in models:
         print("\n\nTesting model {}\n".format(name, counter))
@@ -86,7 +88,7 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
             mean_tpr, mean_fpr = roc_auc(teY, teY_pred, counter,
                                          color, mean_tpr, mean_fpr)
             counter += 1
-        counter = 1
+        counter = 0
         print("\nmodel = {}, mean = {}, std = {}"
               .format(name, np.mean(cv_results), np.std(cv_results)))
         # results.append([np.mean(cv_results), np.std(cv_results)])
