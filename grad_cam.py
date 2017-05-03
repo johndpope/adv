@@ -136,9 +136,8 @@ def grad_cam(input_model, image, category_index, layer_name):
 
 
 preprocessed_input = load_image(sys.argv[1])
-
-model = VGG16(weights='imagenet')
-
+model = sys.argv[2]  # trained model other than vgg
+# model = VGG16(weights='imagenet')
 predictions = model.predict(preprocessed_input)
 top_1 = decode_predictions(predictions)[0][0]
 print('Predicted class:')
