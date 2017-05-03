@@ -1,4 +1,30 @@
-er))
+import numpy as np
+from keras import backend as K
+from keras.layers import Lambda
+from xgboost import XGBClassifier, plot_importance
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.feature_selection import SelectFromModel
+from sklearn.preprocessing import normalize
+from deap import algorithms, base, creator, tools
+from scipy.spatial import distance
+from matplotlib import pyplot as plt
+import cv2
+
+
+def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
+    """
+    models: list of tuples [('model name', model object), ...]
+    X: training data
+    Y: labels, should be one-hot and not clipped
+    """
+    cv_results = []
+    results = []
+    names = []
+    counter = 1
+    skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
+    for name, model in models:
+        print("\n\nTesting model {}\n".format(name, counter))
         model.summary()
         for tr_id, te_id in skf.split(X, np.argmax(Y, axis=1)):
             print("Fold {}".format(counter))
