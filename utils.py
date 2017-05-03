@@ -1,30 +1,4 @@
-import numpy as np
-from keras import backend as K
-from keras.layers import Lambda
-from xgboost import XGBClassifier, plot_importance
-from sklearn.model_selection import StratifiedKFold, train_test_split
-from sklearn.metrics import classification_report, accuracy_score
-from sklearn.feature_selection import SelectFromModel
-from sklearn.preprocessing import normalize
-from deap import algorithms, base, creator, tools
-from scipy.spatial import distance
-from matplotlib import pyplot as plt
-import cv2
-
-
-def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
-    """
-    models: list of tuples [('model name', model object), ...]
-    X: training data
-    Y: labels, should be one-hot and not clipped
-    """
-    cv_results = []
-    results = []
-    names = []
-    counter = 1
-    skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
-    for name, model in models:
-        print("\n\nTesting model {}\n".format(name, counter))
+er))
         model.summary()
         for tr_id, te_id in skf.split(X, np.argmax(Y, axis=1)):
             print("Fold {}".format(counter))
@@ -39,7 +13,7 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
             model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
                       validation_split=0.2, verbose=1)
             scores = model.evaluate(teX, teY, verbose=0)
-            cv_results.append(scores[1])
+            cv_results.append(scores[0])
             counter += 1
         counter = 1
         # results.append([np.mean(cv_results), np.std(cv_results)])
@@ -103,10 +77,6 @@ def global_avg_pooling_layer(model):
                      output_shape=global_average_pooling_shape))
 
     return model
-
-
-def grad_cam():
-    passs
 
 
 def get_classmap(model, X, nb_classes, batch_size, num_input_channels, ratio):
