@@ -47,7 +47,7 @@ def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('ROC curve')
-    plt.legend(['model {}'], loc="lower right")
+    plt.legend(loc="lower right")
     plt.show()
 
 
