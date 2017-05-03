@@ -29,8 +29,8 @@ def roc_auc(teY, teY_pred, counter, color, mean_tpr, mean_fpr):
     return mean_tpr, mean_fpr
 
 
-def plot_roc_auc(X, y, skf, mean_tpr, mean_fpr):
-    mean_tpr /= skf.get_n_splits(X, y)
+def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
+    mean_tpr /= skf.get_n_splits(X, Y)
     mean_tpr[-1] = 1.0
     mean_auc = auc(mean_fpr, mean_tpr)
 
@@ -97,6 +97,7 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
         report = classification_report(np.argmax(teY, axis=1),
                                        np.argmax(teY_pred, axis=1))
         print(report)
+        plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr)
     # boxplot algorithm comparison
     fig = plt.figure()
     fig.suptitle('Algorithm Comparison')
