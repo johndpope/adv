@@ -27,6 +27,7 @@ def roc_auc(teY, teY_pred, counter, color, mean_tpr, mean_fpr):
     plt.plot(fpr, tpr, lw=2, color=color,
              label='ROC fold {} (area = {:0.2f})'
              .format(counter, roc_auc))
+    plt.hold(True)
 
     return mean_tpr, mean_fpr
 
@@ -36,10 +37,9 @@ def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
     mean_tpr[-1] = 1.0
     mean_auc = auc(mean_fpr, mean_tpr)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
     plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='k',
              label='Luck')
+    plt.hold(True)
     plt.plot(mean_fpr, mean_tpr, color='g', linestyle='--',
              label='Mean ROC (area = {:0.2f})'.format(mean_auc, lw=2))
     plt.xlim([-0.05, 1.05])
@@ -66,6 +66,8 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
     names = []
     counter = 0
     skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
+    fig = plt.figure()
+    ax_roc = fig.add_subplot(111)
     for name, model in models:
         print("\n\nTesting model {}\n".format(name, counter))
         model.summary()
