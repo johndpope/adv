@@ -83,19 +83,19 @@ if __name__ == "__main__":
     label_smooth = .1
     Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
 
-    # cnn = cnn_model()
-    # per = mlp()
-    # hr = hierarchical()
-    # ir = irnn()
-    # idd = identity_model()
-    # models = [("cnn_model", cnn),
-    #           ("mlp", per),
-    #           ("hierarchical", hr),
-    #           ("irnn", ir),
-    #           ("identity_model", idd)]
+    cnn = cnn_model()
+    per = mlp()
+    hr = hierarchical()
+    ir = irnn()
+    idd = identity_model()
+    models = [("cnn_model", cnn),
+              ("mlp", per),
+              ("hierarchical", hr),
+              ("irnn", ir),
+              ("identity_model", idd)]
 
-    # rank_classifiers(models, X_train, Y_train)
-    rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
+    rank_classifiers(models, X_train, Y_train)
+    # rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
     import pdb
     pdb.set_trace()
     # Define input TF placeholder
