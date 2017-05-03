@@ -301,7 +301,6 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     :param nb_classes: the number of output classes
     :return:
     """
-    model = Sequential()
 
     # Define the layers successively
     if keras.backend.image_dim_ordering() == 'th':
@@ -309,27 +308,28 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     else:
         input_shape = (img_rows, img_cols, channels)
 
-    layers = [Dropout(0.2, input_shape=input_shape),
-              Convolution2D(nb_filters, 8, 8, subsample=(2, 2), border_mode="same"),
-              Activation('relu'),
-              Convolution2D((nb_filters * 2), 6, 6, subsample=(2, 2), border_mode="valid"),
-              Activation('relu'),
-              Convolution2D((nb_filters * 2), 5, 5, subsample=(1, 1), border_mode="valid"),
-              Activation('relu'),
-              Dropout(0.5),
-              Flatten(),
-              Dense(nb_classes)]
+    inpt = Input(shape=input_shape)
+    x = Dropout(0.2)(inpt)
+    x = Convolution2D(nb_filters, 8, 8, subsample=(2, 2),
+                      border_mode='same')(x)
+    x = Activation('relu')(x)
+    x = Convolution2D((nb_filters * 2), 6, 6, subsample=(2, 2),
+                      border_mode='valid')
+    x = Activation('relu')(x)
+    x = Convolution2D((nb_filters * 2), 5, 5, subsample=(1, 1),
+                      border_mode='valid')
+    x = Activation('relu')(x)
+    x = Dropout(0.5)(x)
+    x = Flatten()(x)
+    x = Dense(nb_classes)(x)
 
-    for layer in layers:
-        model.add(layer)
-
-    if logits:
-        logits_tensor = model(input_ph)
-
-    model.add(Activation('softmax'))
+    y = Activation('softmax')(x)
+    model = Model(x, y, name='resblock')
     model.compile(optimizer='adam', loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
+    if logits:
+        logits_tensor = model(input_ph)
     if logits:
         return model, logits_tensor
     else:
@@ -730,14 +730,14 @@ def cnn_lle(data_shape, nb_classes=10):
         Convolution2D(64, 3, 3, activation='relu'),
         Convolution2D(128, 3, 3, activation='relu'),
         Convolution2D(256, 3, 3, activation='relu'),
-        MaxPooling2D(pool_size=pool_size),
+        MaxPooling2D(pool_size=(2, 2)),
         Flatten(),
         Dense(324, activation='relu'),
         Dropout(0.45),
         Dense(162, activation='relu'),
         Dropout(0.35),
         Dense(81, activation='relu'),
-        #Dropout(0.25),
+        # Dropout(0.25),
         Dense(nb_classes, activation='softmax'),
         ])
 
