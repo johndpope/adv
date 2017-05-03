@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 import numpy as np
 import argparse
 import tensorflow as tf
-import keras
+import keras.backend as K
 # from keras.datasets import mnist
 from keras.utils import np_utils
 # from keras.utils.visualize_util import plot
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # Create TF session and set as Keras backend session
     sess = tf.Session()
-    keras.backend.set_session(sess)
+    K.set_session(sess)
     # sess.run(tf.global_variables_initializer())
 
     # Get test data
@@ -103,26 +103,19 @@ if __name__ == "__main__":
                     'learning_rate': args.learning_rate}
     eval_params = {'batch_size': args.batch_size}
 
-    cnn = cnn_model()
-    per = mlp()
-    hr = hierarchical()
-    ir = irnn()
-    idd = identity_model()
-    models = [("cnn_model", cnn),
-              ("mlp", per),
-              ("hierarchical", hr),
-              ("irnn", ir),
-              ("identity_model", idd)]
+    # cnn = cnn_model()
+    # per = mlp()
+    # hr = hierarchical()
+    # ir = irnn()
+    # idd = identity_model()
+    # models = [("cnn_model", cnn),
+    #           ("mlp", per),
+    #           ("hierarchical", hr),
+    #           ("irnn", ir),
+    #           ("identity_model", idd)]
 
-    adv_x = fgsm(x, predictions, eps=0.3)
-    X_test_adv, = batch_eval(sess, [x], [adv_x], [X_test],
-                             args=eval_params)
-
-    rank_classifiers(models, X_train, Y_train, X_test, X_test_adv, Y_test)
+    # rank_classifiers(models, X_train, Y_train, X_test, X_test_adv, Y_test)
     # rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
-
-    import pdb
-    pdb.set_trace()
 
     def evaluate_legit():
         accuracy = model_eval(sess, x, y, predictions,
@@ -138,6 +131,8 @@ if __name__ == "__main__":
     adv_x = fgsm(x, predictions, eps=0.3)
     X_test_adv, = batch_eval(sess, [x], [adv_x], [X_test],
                              args=eval_params)
+    import pdb
+    pdb.set_trace()
     assert X_test_adv.shape[0] == 10000, X_test_adv.shape
 
     # Evaluate the accuracy of the MNIST model on adversarial examples
