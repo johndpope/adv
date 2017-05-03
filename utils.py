@@ -44,12 +44,12 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
         import pdb
         pdb.set_trace()
         counter = 1
+        print("\nmodel = {}, mean = {}, std = {}"
+              .format(name, np.mean(cv_results), np.std(cv_results)))
         # results.append([np.mean(cv_results), np.std(cv_results)])
         results.append(cv_results)
         cv_results = []
         names.append(name)
-        print("\nmodel = {}, mean = {}, std = {}"
-              .format(name, np.mean(results), np.std(results)))
         teY_pred = model.predict(teX)
         report = classification_report(np.argmax(teY, axis=1),
                                        np.argmax(teY_pred, axis=1))
