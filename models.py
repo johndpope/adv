@@ -311,7 +311,7 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     inpt = Input(shape=input_shape)
     x = Dropout(0.2)(inpt)
     x = Convolution2D(nb_filters, 8, 8, subsample=(2, 2),
-                      border_mode='same')(x)
+                      border_mode='same', input_shape=input_shape)(x)
     x = Activation('relu')(x)
     x = Convolution2D((nb_filters * 2), 6, 6, subsample=(2, 2),
                       border_mode='valid')
