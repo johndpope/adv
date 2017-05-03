@@ -303,28 +303,28 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     """
 
     # Define the layers successively
-    if keras.backend.image_dim_ordering() == 'th':
+    if K.image_dim_ordering() == 'th':
         input_shape = (channels, img_rows, img_cols)
     else:
         input_shape = (img_rows, img_cols, channels)
 
     inpt = Input(shape=input_shape)
-    x = Dropout(0.2)(inpt)
+    x = Dropout(0.2, input_shape=input_shape)(inpt)
     x = Convolution2D(nb_filters, 8, 8, subsample=(2, 2),
-                      border_mode='same', input_shape=input_shape)(x)
+                      border_mode='same')(inpt)
     x = Activation('relu')(x)
     x = Convolution2D((nb_filters * 2), 6, 6, subsample=(2, 2),
-                      border_mode='valid')
+                      border_mode='valid')(x)
     x = Activation('relu')(x)
     x = Convolution2D((nb_filters * 2), 5, 5, subsample=(1, 1),
-                      border_mode='valid')
+                      border_mode='valid')(x)
     x = Activation('relu')(x)
     x = Dropout(0.5)(x)
     x = Flatten()(x)
     x = Dense(nb_classes)(x)
 
     y = Activation('softmax')(x)
-    model = Model(x, y, name='resblock')
+    model = Model(inpt, y, name='resblock')
     model.compile(optimizer='adam', loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
