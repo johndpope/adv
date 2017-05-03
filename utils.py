@@ -38,7 +38,7 @@ def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
     mean_auc = auc(mean_fpr, mean_tpr)
 
     plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='k',
-             label='Luck')
+             label='Random')
     plt.hold(True)
     plt.plot(mean_fpr, mean_tpr, color='g', linestyle='--',
              label='Mean ROC (area = {:0.2f})'.format(mean_auc, lw=2))
@@ -46,12 +46,13 @@ def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
     plt.ylim([-0.05, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver operating characteristic curve')
-    plt.legend(loc="lower right")
+    plt.title('ROC curve')
+    plt.legend(['model {}'], loc="lower right")
     plt.show()
 
 
-def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
+def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
+                     epochs=2, batch_size=128):
     """
     models: list of tuples [('model name', model object), ...]
     X: training data
@@ -91,8 +92,12 @@ def rank_classifiers(models, X, Y, epochs=2, batch_size=128):
                                          color, mean_tpr, mean_fpr)
             counter += 1
         counter = 0
-        print("\nmodel = {}, mean = {}, std = {}"
-              .format(name, np.mean(cv_results), np.std(cv_results)))
+        legit_scores = model.evaluate(X_test, Y_test)
+        adv_scores = model.evaluate(X_test_adv, Y_test)
+        print("\nmodel = {}, mean = {}, std = {}, legit test acc. = {}, "
+              "adv. test acc. = {}"
+              .format(name, np.mean(cv_results), np.std(cv_results),
+                      legit_scores[1], adv_scores[1]))
         # results.append([np.mean(cv_results), np.std(cv_results)])
         results.append(cv_results)
         cv_results = []
