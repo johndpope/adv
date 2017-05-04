@@ -1,7 +1,7 @@
 """Entry point to evolving the neural network. Start here."""
 import logging
 from optimizer import Optimizer
-from tqdm import tqdm
+# from tqdm import tqdm
 
 # Setup logging.
 logging.basicConfig(
@@ -11,6 +11,7 @@ logging.basicConfig(
     filename='log.txt'
 )
 
+
 def train_networks(networks, dataset):
     """Train each network.
 
@@ -18,11 +19,12 @@ def train_networks(networks, dataset):
         networks (list): Current population of networks
         dataset (str): Dataset to use for training/evaluating
     """
-    pbar = tqdm(total=len(networks))
+    # pbar = tqdm(total=len(networks))
     for network in networks:
         network.train(dataset)
-        pbar.update(1)
-    pbar.close()
+    #     pbar.update(1)
+    # pbar.close()
+
 
 def get_average_accuracy(networks):
     """Get the average accuracy for a group of networks.
@@ -39,6 +41,7 @@ def get_average_accuracy(networks):
         total_accuracy += network.accuracy
 
     return total_accuracy / len(networks)
+
 
 def generate(generations, population, nn_param_choices, dataset):
     """Generate a network with the genetic algorithm.
@@ -79,6 +82,7 @@ def generate(generations, population, nn_param_choices, dataset):
     # Print out the top 5 networks.
     print_networks(networks[:5])
 
+
 def print_networks(networks):
     """Print a list of networks.
 
@@ -89,6 +93,7 @@ def print_networks(networks):
     logging.info('-'*80)
     for network in networks:
         network.print_network()
+
 
 def main():
     """Evolve a network."""
@@ -108,6 +113,7 @@ def main():
                  (generations, population))
 
     generate(generations, population, nn_param_choices, dataset)
+
 
 if __name__ == '__main__':
     main()

@@ -314,6 +314,7 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     x = Convolution2D(nb_filters, 8, 8, subsample=(2, 2),
                       border_mode='same')(inpt)
     x = Activation('relu')(x)
+    # x = merge([x, inpt], mode='concat', concat_axis=3)
     x = Convolution2D((nb_filters * 2), 6, 6, subsample=(2, 2),
                       border_mode='valid')(x)
     x = Activation('relu')(x)

@@ -10,6 +10,7 @@ from operator import add
 import random
 from network import Network
 
+
 class Optimizer():
     """Class that implements genetic algorithm for MLP optimization."""
 

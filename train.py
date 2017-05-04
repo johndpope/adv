@@ -14,6 +14,7 @@ from keras.callbacks import EarlyStopping
 # Helper: Early stopping.
 early_stopper = EarlyStopping(patience=5)
 
+
 def get_cifar10():
     """Retrieve the CIFAR dataset and process the data."""
     # Set defaults.
@@ -36,6 +37,7 @@ def get_cifar10():
 
     return (nb_classes, batch_size, input_shape, x_train, x_test, y_train, y_test)
 
+
 def get_mnist():
     """Retrieve the MNIST dataset and process the data."""
     # Set defaults.
@@ -57,6 +59,7 @@ def get_mnist():
     y_test = to_categorical(y_test, nb_classes)
 
     return (nb_classes, batch_size, input_shape, x_train, x_test, y_train, y_test)
+
 
 def compile_model(network, nb_classes, input_shape):
     """Compile a sequential model.
@@ -81,7 +84,8 @@ def compile_model(network, nb_classes, input_shape):
 
         # Need input shape for first layer.
         if i == 0:
-            model.add(Dense(nb_neurons, activation=activation, input_shape=input_shape))
+            model.add(Dense(nb_neurons, activation=activation,
+                            input_shape=input_shape))
         else:
             model.add(Dense(nb_neurons, activation=activation))
 
@@ -94,6 +98,7 @@ def compile_model(network, nb_classes, input_shape):
                   metrics=['accuracy'])
 
     return model
+
 
 def train_and_score(network, dataset):
     """Train the model, return test loss.
