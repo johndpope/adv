@@ -52,6 +52,8 @@ if __name__ == "__main__":
                         help="Rank classifiers based on their accuracy")
     parser.add_argument("-s", "--split_dataset", type=float, default=0.2,
                         help="Rank classifiers based on their accuracy")
+    parser.add_argument("-eps", "--eps", type=float, default=0.3,
+                        help="Epsilon variable for adversarial distortion")
     args = parser.parse_args()
 
     # Set TF random seed to improve reproducibility
@@ -76,6 +78,8 @@ if __name__ == "__main__":
         Y_test = Y[60000:]
         X = np.delete(X, X[60000:], axis=1)
         Y = np.delete(Y, Y[60000:], axis=1)
+    elif args.dataset == "cifar_lle":
+        pass
 
     if args.split_dataset is not None:
         X_train, X_val, Y_train, Y_val = train_test_split(X, Y,
@@ -121,12 +125,14 @@ if __name__ == "__main__":
               .format(accuracy))
         return accuracy
 
+    # train on dataset
     model_train(sess, x, y, predictions, X_train, Y_train,
                 evaluate=evaluate_legit, args=train_params)
 
     # Craft adversarial examples using Fast Gradient Sign Method (FGSM)
     fgsm = FastGradientMethod(model, sess=sess)
-    adv_x = FastGradientMethod(x, predictions, eps=0.3)
+    fgsm_params = {'eps': args.eps}
+    adv_x = fgsm.generate(x, **fgsm_params)
     X_test_adv, = batch_eval(sess, [x], [adv_x], [X_test],
                              args=eval_params)
 
