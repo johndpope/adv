@@ -52,7 +52,7 @@ def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
 
 
 def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
-                     epochs=2, batch_size=128):
+                     save_model=False, epochs=2, batch_size=128):
     """
     models: list of tuples [('model name', model object), ...]
     X: training data
@@ -114,6 +114,7 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
                                        np.argmax(teY_pred, axis=1))
         print(report)
         plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr)
+        model.save_model("{}.hdf5".format(name))
     # boxplot algorithm comparison
     fig = plt.figure()
     fig.suptitle('Algorithm Comparison')
