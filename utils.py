@@ -87,6 +87,9 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
                 teX = teX.reshape(-1, 784, 1)
                 X_test = X_test.reshape(-1, 784, 1)
                 X_test_adv = X_test_adv.reshape(-1, 784, 1)
+            else:
+                X_test = X_test.reshape(-1, 28, 28, 1)
+                X_test_adv = X_test_adv.reshape(-1, 28, 28, 1)
             model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
                       validation_split=0.2, verbose=1)
             scores = model.evaluate(teX, teY, verbose=0)

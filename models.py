@@ -248,7 +248,7 @@ def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
 
 def irnn(data_shape=(None, 784, 1), nb_classes=10,
          learning_rate=1e-6, hidden_units=100):
-    #clip_norm = 1.0
+    # clip_norm = 1.0
     model = Sequential()
     model.add(SimpleRNN(output_dim=hidden_units,
                         init=lambda shape,
@@ -257,6 +257,7 @@ def irnn(data_shape=(None, 784, 1), nb_classes=10,
                         name: identity(shape, scale=1.0, name=name),
                         activation='relu',
                         input_shape=data_shape[1:]))
+    model.add(SimpleRNN(output_dim=hidden_units, activation='relu'))
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
     rmsprop = RMSprop(lr=learning_rate)

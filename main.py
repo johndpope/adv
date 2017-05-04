@@ -114,7 +114,8 @@ if __name__ == "__main__":
     #           ("irnn", ir),
     #           ("identity_model", idd)]
 
-    # rank_classifiers(models, X_train, Y_train, X_test, X_test_adv, Y_test)
+    # rank_classifiers(models, X_train, Y_train, X_test, X_test_adv,
+    # Y_test, args.epochs, args.batch_size)
     # rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
 
     def evaluate_legit():
@@ -140,7 +141,7 @@ if __name__ == "__main__":
                                args=eval_params)
     print("Test accuracy on adversarial examples: ".format(adv1_accuracy))
 
-    print("Repeating the process, using adversarial training")
+    print("Repeating the process, using aversarial training")
     # Redefine TF model graph
     model_2 = eval(args.model + '()')
     predictions_2 = model_2(x)
