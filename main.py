@@ -9,12 +9,13 @@ import tensorflow as tf
 import keras.backend as K
 # from keras.datasets import mnist
 from keras.utils import np_utils
-# from keras.utils.visualize_util import plot
+from keras.datasets import cifar10
+from keras.utils.visualize_util import plot
 from sklearn.model_selection import train_test_split
 
 from cleverhans.utils_mnist import data_mnist
 from cleverhans.utils_tf import model_train, model_eval, batch_eval
-from cleverhans.attacks import fgsm
+from cleverhans.attacks import FastGradientMethod
 from cleverhans.utils import cnn_model, pair_visual, grid_visual
 from models import hierarchical, irnn, mlp, siamese, identity_model
 from models import mlp_lle, cnn_lle, cnn_model
@@ -43,6 +44,14 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--nb_classes", type=int, default=10,
                         help="Choose the number of classes in your"
                         "dataset")
+    parser.add_argument("-rc", "--rank_classifiers", type=bool, default=False,
+                        help="Rank classifiers based on their accuracy")
+    parser.add_argument("-rf", "--rank_features", type=bool, default=False,
+                        help="Rank feature importance using xgboost")
+    parser.add_argument("-p", "--plot_arch", type=bool, default=False,
+                        help="Rank classifiers based on their accuracy")
+    parser.add_argument("-s", "--split_dataset", type=float, default=0.2,
+                        help="Rank classifiers based on their accuracy")
     args = parser.parse_args()
 
     # Set TF random seed to improve reproducibility
@@ -57,10 +66,9 @@ if __name__ == "__main__":
 
     # Get test data
     if args.dataset == "mnist":
-        # (X, Y), (X_test, Y_test) = mnist.load_data()
         X, Y, X_test, Y_test = data_mnist()
     elif args.dataset == "cifar":
-        X, Y, X_test, Y_test = data_cifar()
+        X, Y, X_test, Y_test = cifar10()
     elif args.dataset == "mnist_lle":
         X = np.load('trX_lle_10n_200c_mnist.npy')
         Y = np.load('trY_lle_10n_200c_mnist.npy')
@@ -69,9 +77,10 @@ if __name__ == "__main__":
         X = np.delete(X, X[60000:], axis=1)
         Y = np.delete(Y, Y[60000:], axis=1)
 
-    X_train, X_val, Y_train, Y_val = train_test_split(X, Y,
-                                                      test_size=0.15,
-                                                      random_state=2017)
+    if args.split_dataset is not None:
+        X_train, X_val, Y_train, Y_val = train_test_split(X, Y,
+                                                          test_size=args.split_dataset,
+                                                          random_state=2017)
     X_train = X_train.reshape(-1, 28, 28, 1)
     X_test = X_test.reshape(-1, 28, 28, 1)
 
@@ -91,32 +100,19 @@ if __name__ == "__main__":
     model = eval(args.model + '()')
     model.summary()
     predictions = model(x)
-    # model.fit(X_train, Y_train, nb_epoch=1000, batch_size=500, shuffle=True,
-    # validation_data=(X_val, Y_val), verbose=1)
-    print("Defined TensorFlow cnn model graph.")
+    print("Defined TensorFlow graph.")
 
-    # plot(identity, to_file='identity_model.png', show_shapes=True,
-    #      show_layer_names=True)
+    if args.plot_arch is True:
+        plot(model, to_file='identity_model.png', show_shapes=True,
+             show_layer_names=True)
+
+    if args.rank_features is True:
+        rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
 
     train_params = {'nb_epochs': args.epochs,
                     'batch_size': args.batch_size,
                     'learning_rate': args.learning_rate}
     eval_params = {'batch_size': args.batch_size}
-
-    # cnn = cnn_model()
-    # per = mlp()
-    # hr = hierarchical()
-    # ir = irnn()
-    # idd = identity_model()
-    # models = [("cnn_model", cnn),
-    #           ("mlp", per),
-    #           ("hierarchical", hr),
-    #           ("irnn", ir),
-    #           ("identity_model", idd)]
-
-    # rank_classifiers(models, X_train, Y_train, X_test, X_test_adv,
-    # Y_test, args.epochs, args.batch_size)
-    # rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
 
     def evaluate_legit():
         accuracy = model_eval(sess, x, y, predictions,
@@ -129,11 +125,26 @@ if __name__ == "__main__":
                 evaluate=evaluate_legit, args=train_params)
 
     # Craft adversarial examples using Fast Gradient Sign Method (FGSM)
-    adv_x = fgsm(x, predictions, eps=0.3)
+    fgsm = FastGradientMethod(model, sess=sess)
+    adv_x = FastGradientMethod(x, predictions, eps=0.3)
     X_test_adv, = batch_eval(sess, [x], [adv_x], [X_test],
                              args=eval_params)
-    import pdb
-    pdb.set_trace()
+
+    if args.rank_classifiers is True:
+        cnn = cnn_model()
+        per = mlp()
+        hr = hierarchical()
+        ir = irnn()
+        idd = identity_model()
+        models = [("cnn_model", cnn),
+                  ("mlp", per),
+                  ("hierarchical", hr),
+                  ("irnn", ir),
+                  ("identity_model", idd)]
+
+        rank_classifiers(models, X_train, Y_train, X_test, X_test_adv,
+                         Y_test, args.epochs, args.batch_size)
+
     assert X_test_adv.shape[0] == 10000, X_test_adv.shape
 
     # Evaluate the accuracy of the MNIST model on adversarial examples
