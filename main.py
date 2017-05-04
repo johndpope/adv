@@ -54,6 +54,12 @@ if __name__ == "__main__":
                         help="Rank classifiers based on their accuracy")
     parser.add_argument("-eps", "--eps", type=float, default=0.3,
                         help="Epsilon variable for adversarial distortion")
+    parser.add_argument("-pv", "--pair_visual", type=int, default=5,
+                        help="Plot normal and distorted image from "
+                             "particular target classs")
+    parser.add_argument("-gv", "--grid_visual", type=bool, default=False,
+                        help="Plot normal and distorted image from "
+                             "particular target classs")
     args = parser.parse_args()
 
     # Set TF random seed to improve reproducibility
@@ -69,8 +75,10 @@ if __name__ == "__main__":
     # Get test data
     if args.dataset == "mnist":
         X, Y, X_test, Y_test = data_mnist()
+        x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
     elif args.dataset == "cifar":
         X, Y, X_test, Y_test = cifar10()
+        x = tf.placeholder(tf.float32, shape=(None, 32, 32, 3))
     elif args.dataset == "mnist_lle":
         X = np.load('trX_lle_10n_200c_mnist.npy')
         Y = np.load('trY_lle_10n_200c_mnist.npy')
@@ -78,8 +86,10 @@ if __name__ == "__main__":
         Y_test = Y[60000:]
         X = np.delete(X, X[60000:], axis=1)
         Y = np.delete(Y, Y[60000:], axis=1)
+        x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
+        B
     elif args.dataset == "cifar_lle":
-        pass
+        x = tf.placeholder(tf.float32, shape=(None, 32, 32, 3))
 
     if args.split_dataset is not None:
         X_train, X_val, Y_train, Y_val = train_test_split(X, Y,
@@ -97,7 +107,6 @@ if __name__ == "__main__":
     Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
 
     # Define input TF placeholder
-    x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
     y = tf.placeholder(tf.float32, shape=(None, 10))
 
     # Define TF model graph
@@ -135,6 +144,19 @@ if __name__ == "__main__":
     adv_x = fgsm.generate(x, **fgsm_params)
     X_test_adv, = batch_eval(sess, [x], [adv_x], [X_test],
                              args=eval_params)
+    assert X_test_adv.shape[0] == 10000, X_test_adv.shape
+
+    if args.pair_visual is not None:
+        pair_visual(X_test[args.pair_visual], X_test_adv[args.pair_visual])
+
+    if args.grid_visual is True:
+        if args.dataset == "mnist":
+            labels = np.unique(np.argmax(Y_train, axis=1))
+            data = X_train[labels]
+        else:
+            labels = np.unique(np.argmax(Y_test, axis=1))
+            data = X_test[labels]
+        grid_visual(np.hstack((labels, data)))
 
     if args.rank_classifiers is True:
         cnn = cnn_model()
@@ -150,8 +172,6 @@ if __name__ == "__main__":
 
         rank_classifiers(models, X_train, Y_train, X_test, X_test_adv,
                          Y_test, args.epochs, args.batch_size)
-
-    assert X_test_adv.shape[0] == 10000, X_test_adv.shape
 
     # Evaluate the accuracy of the MNIST model on adversarial examples
     adv1_accuracy = model_eval(sess, x, y, predictions, X_test_adv, Y_test,
