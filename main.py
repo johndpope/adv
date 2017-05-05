@@ -63,10 +63,10 @@ if __name__ == "__main__":
                              "particular target classs")
     args = parser.parse_args()
 
-    # Set TF random seed to improve reproducibility
-    tf.set_random_seed(1234)
+    K.set_learning_phase(0)  # without this causes error during learning
 
-    # keras.backend.learning_phase() = tf.constant(0) # test mode
+    # Set TF random seed to improve reproducibility
+    tf.set_random_seed(2017)
 
     # Create TF session and set as Keras backend session
     sess = tf.Session()
@@ -148,7 +148,8 @@ if __name__ == "__main__":
     assert X_test_adv.shape[0] == 10000, X_test_adv.shape
 
     if args.pair_visual is not None:
-        pair_visual(X_test[args.pair_visual], X_test_adv[args.pair_visual])
+        pair_visual(X_test[args.pair_visual].reshape(28, 28),
+                    X_test_adv[args.pair_visual].reshape(28, 28))
 
     if args.grid_visual is True:
         if args.dataset == "mnist":
@@ -172,7 +173,8 @@ if __name__ == "__main__":
                   ("identity_model", idd)]
 
         rank_classifiers(models, X_train, Y_train, X_test, X_test_adv,
-                         Y_test, args.epochs, args.batch_size)
+                         Y_test, epochs=args.epochs,
+                         batch_size=args.batch_size)
 
     # Evaluate the accuracy of the MNIST model on adversarial examples
     # X_test_adv might change to X_test as in the new cleverhans example
