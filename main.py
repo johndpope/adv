@@ -21,7 +21,7 @@ from cleverhans.utils import cnn_model, pair_visual, grid_visual
 from models import hierarchical, irnn, mlp, siamese, identity_model
 from models import mlp_lle, cnn_lle, cnn_model
 from utils import rank_classifiers, rank_features
-from attacks import setup_tutorial
+from attacks import setup_tutorial, setup_data
 
 
 if __name__ == "__main__":
@@ -65,42 +65,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     setup_tutorial()
+    setup_data()
 
-    # Get test data
-    if args.dataset == "mnist":
-        X, Y, X_test, Y_test = data_mnist()
-        x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
-    elif args.dataset == "cifar":
-        X, Y, X_test, Y_test = cifar10()
-        x = tf.placeholder(tf.float32, shape=(None, 32, 32, 3))
-    elif args.dataset == "mnist_lle":
-        X = np.load('trX_lle_10n_200c_mnist.npy')
-        Y = np.load('trY_lle_10n_200c_mnist.npy')
-        X_test = X[60000:]
-        Y_test = Y[60000:]
-        X = np.delete(X, X[60000:], axis=1)
-        Y = np.delete(Y, Y[60000:], axis=1)
-        x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
-    elif args.dataset == "cifar_lle":
-        x = tf.placeholder(tf.float32, shape=(None, 32, 32, 3))
-
-    if args.split_dataset is not None:
-        X_train, X_val, Y_train, Y_val = train_test_split(X, Y,
-                                                          test_size=args.split_dataset,
-                                                          random_state=2017)
-    X_train = X_train.reshape(-1, 28, 28, 1)
-    X_test = X_test.reshape(-1, 28, 28, 1)
-
-    if Y_train.ndim < 2 and Y_test.ndim < 2:
-        Y_train = np_utils.to_categorical(Y_train, 10)
-        Y_test = np_utils.to_categorical(Y_test, 10)
-        Y_val = np_utils.to_categorical(Y_val, 10)
-
-    label_smooth = .1
-    Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
-
-    # Define input TF placeholder
-    y = tf.placeholder(tf.float32, shape=(None, 10))
 
     # Define TF model graph
     model = eval(args.model + '()')
