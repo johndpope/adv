@@ -21,6 +21,7 @@ from cleverhans.utils import cnn_model, pair_visual, grid_visual
 from models import hierarchical, irnn, mlp, siamese, identity_model
 from models import mlp_lle, cnn_lle, cnn_model
 from utils import rank_classifiers, rank_features
+from attacks import setup_tutorial
 
 
 if __name__ == "__main__":
@@ -63,15 +64,7 @@ if __name__ == "__main__":
                              "particular target classs")
     args = parser.parse_args()
 
-    K.set_learning_phase(0)  # without this causes error during learning
-
-    # Set TF random seed to improve reproducibility
-    tf.set_random_seed(2017)
-
-    # Create TF session and set as Keras backend session
-    sess = tf.Session()
-    K.set_session(sess)
-    # sess.run(tf.global_variables_initializer())
+    setup_tutorial()
 
     # Get test data
     if args.dataset == "mnist":
