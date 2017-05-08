@@ -73,10 +73,6 @@ if __name__ == "__main__":
                         help="Filename to save model under.")
     parser.add_argument("-nas", "--nb_attack_samples", type=int, default=10,
                         help="Nb ot test set examples to attack")
-    parser.add_argument("-rows", "--img_rows", type=int, default=28,
-                        help="Image height dimension.")
-    parser.add_argument("-cols", "--img_cols", type=int, default=28,
-                        help="Image width dimension.")
     args = parser.parse_args()
 
     sess = setup_config()
@@ -89,7 +85,7 @@ if __name__ == "__main__":
     print("Defined TensorFlow graph.")
 
     if args.plot_arch is True:
-        plot(model, to_file='identity_model.png', show_shapes=True,
+        plot(model, to_file=eval(args.model + '.png'), show_shapes=True,
              show_layer_names=True)
 
     if args.rank_features is True:
