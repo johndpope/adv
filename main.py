@@ -19,7 +19,7 @@ from models import hierarchical, irnn, mlp, identity_model
 from models import mlp_lle, cnn_lle
 from utils import rank_classifiers, rank_features
 from attacks import setup_config, setup_data, evaluate_legit
-from attacks import evaluate_adversarial, whitebox_fgsm
+from attacks import evaluate_adversarial, whitebox_fgsm, jsma
 
 
 if __name__ == "__main__":
@@ -37,7 +37,7 @@ if __name__ == "__main__":
                         "testing against adversarial attacks")
     parser.add_argument("-a", "--attack", type=str, default="fgsm",
                         help="Choose the method of attack, "
-                        "1.)fgsm, 2.)jmsa")
+                        "1.)fgsm, 2.)jsma")
     parser.add_argument("dataset", type=str, default="mnist",
                         help="Choose the dataset to be used for "
                         "the training and the attacks")
@@ -70,6 +70,8 @@ if __name__ == "__main__":
                         help="Directory storing the saved model.")
     parser.add_argument("-f", "--filename", type=str, default="mnist.ckpt",
                         help="Filename to save model under.")
+    parser.add_argument("-nas", "--nb_attack_samples", type=int, default=10,
+                        help="Nb ot test set examples to attack")
     args = parser.parse_args()
 
     sess = setup_config()
@@ -107,6 +109,9 @@ if __name__ == "__main__":
     # Evaluate the accuracy of the MNIST model on legitimate validation
     # examples
     evaluate_legit(sess, x, y, predictions, valX, valY, eval_params)
+
+    if args.attack is "jsma":
+        jsma(sess, model, x, y, predictions, teX, teY)
 
     # craft adversarial examples using fgsm
     adv_x, preds_adv, X_test_adv = whitebox_fgsm(sess, model, x, args,
