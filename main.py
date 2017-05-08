@@ -5,19 +5,15 @@ from __future__ import unicode_literals
 
 import numpy as np
 import argparse
-import tensorflow as tf
-import keras.backend as K
 # from keras.datasets import mnist
 from keras.utils.visualize_util import plot
-from sklearn.model_selection import train_test_split
 
-from cleverhans.utils_mnist import data_mnist
-from cleverhans.utils_tf import model_train, model_eval, batch_eval
 from cleverhans.attacks import FastGradientMethod
-from cleverhans.attacks_tf import jacobian_graph, jacobian_augmentation
 from cleverhans.utils import cnn_model, pair_visual, grid_visual
-from models import hierarchical, irnn, mlp, siamese, identity_model
-from models import mlp_lle, cnn_lle, cnn_model
+from cleverhans.utils_tf import model_train, model_eval
+
+from models import hierarchical, irnn, mlp, identity_model
+from models import mlp_lle, cnn_lle
 from utils import rank_classifiers, rank_features
 from attacks import setup_config, setup_data, evaluate_legit
 from attacks import evaluate_adversarial, whitebox_fgsm
