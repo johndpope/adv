@@ -5,8 +5,11 @@ from __future__ import unicode_literals
 
 import numpy as np
 import argparse
+import os
 # from keras.datasets import mnist
 from keras.utils.visualize_util import plot
+
+import tensorflow as tf
 
 from cleverhans.attacks import FastGradientMethod
 from cleverhans.utils import cnn_model, pair_visual, grid_visual
@@ -63,6 +66,10 @@ if __name__ == "__main__":
                         help="Training epochs for each substitute.")
     parser.add_argument("-l", "--lmbda", type=float, default=0.2,
                         help="Lambda in https://arxiv.org/abs/1602.02697.")
+    parser.add_argument("-td", "--training_dir", type=str, default="./tmp",
+                        help="Directory storing the saved model.")
+    parser.add_argument("-f", "--filename", type=str, default="mnist.ckpt",
+                        help="Filename to save model under.")
     args = parser.parse_args()
 
     sess = setup_config()
@@ -82,17 +89,24 @@ if __name__ == "__main__":
         rank_features(np.vstack((trX, valX)).reshape(-1, 784),
                       np.argmax(np.vstack((trY, valY)), axis=1))
 
-    train_params = {'nb_epochs': args.epochs,
-                    'batch_size': args.batch_size,
-                    'learning_rate': args.learning_rate}
-    eval_params = {'batch_size': args.batch_size}
+    # Train an MNIST model if it does not exist in the train_dir folder
+    saver = tf.train.Saver()
+    save_path = os.path.join(args.train_dir, args.filename)
+    if os.path.isfile(save_path):
+        saver.restore(sess, os.path.join(args.train_dir, args.filename))
+    else:
+        train_params = {'nb_epochs': args.epochs,
+                        'batch_size': args.batch_size,
+                        'learning_rate': args.learning_rate}
+        eval_params = {'batch_size': args.batch_size}
+        # train on dataset
+        model_train(sess, x, y, predictions, trX, trY,
+                    args=train_params)
+        saver.save(sess, save_path)
 
-    acc = evaluate_legit(sess, x, y, predictions, valX, valY,
-                         eval_params)
-
-    # train on dataset
-    model_train(sess, x, y, predictions, trX, trY,
-                evaluate=acc, args=train_params)
+    # Evaluate the accuracy of the MNIST model on legitimate validation
+    # examples
+    evaluate_legit(sess, x, y, predictions, valX, valY, eval_params)
 
     # craft adversarial examples using fgsm
     adv_x, preds_adv, X_test_adv = whitebox_fgsm(sess, model, x, args,
