@@ -8,8 +8,6 @@ import argparse
 import tensorflow as tf
 import keras.backend as K
 # from keras.datasets import mnist
-from keras.utils import np_utils
-from keras.datasets import cifar10
 from keras.utils.visualize_util import plot
 from sklearn.model_selection import train_test_split
 
@@ -21,7 +19,7 @@ from cleverhans.utils import cnn_model, pair_visual, grid_visual
 from models import hierarchical, irnn, mlp, siamese, identity_model
 from models import mlp_lle, cnn_lle, cnn_model
 from utils import rank_classifiers, rank_features
-from attacks import setup_tutorial, setup_data
+from attacks import setup_config, setup_data
 
 
 if __name__ == "__main__":
@@ -62,11 +60,16 @@ if __name__ == "__main__":
     parser.add_argument("-gv", "--grid_visual", type=bool, default=False,
                         help="Plot normal and distorted image from "
                              "particular target classs")
+    parser.add_argument("-h", "--holdout", type=int, default=100,
+                        help="Test set holdout for adversary.")
+    parser.add_argument("-da", "--data_aug", type=int, default=6,
+                        help="Training epochs for each substitute.")
+    parser.add_argument("-l", "--lmbda", type=float, default=0.2,
+                        help="Lambda in https://arxiv.org/abs/1602.02697.")
     args = parser.parse_args()
 
-    setup_tutorial()
-    setup_data()
-
+    sess = setup_config()
+    trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
 
     # Define TF model graph
     model = eval(args.model + '()')
@@ -79,7 +82,8 @@ if __name__ == "__main__":
              show_layer_names=True)
 
     if args.rank_features is True:
-        rank_features(X.reshape(-1, 784), np.argmax(Y, axis=1))
+        rank_features(np.vstack((trX, valX)).reshape(-1, 784),
+                      np.argmax(np.vstack((trY, valY)), axis=1))
 
     train_params = {'nb_epochs': args.epochs,
                     'batch_size': args.batch_size,
