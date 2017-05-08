@@ -7,7 +7,7 @@ import numpy as np
 import argparse
 import os
 # from keras.datasets import mnist
-from keras.utils.visualize_util import plot
+# from keras.utils.visualize_util import plot
 
 import tensorflow as tf
 
@@ -61,13 +61,13 @@ if __name__ == "__main__":
     parser.add_argument("-gv", "--grid_visual", type=bool, default=False,
                         help="Plot normal and distorted image from "
                              "particular target classs")
-    parser.add_argument("-h", "--holdout", type=int, default=100,
+    parser.add_argument("-ho", "--holdout", type=int, default=100,
                         help="Test set holdout for adversary.")
     parser.add_argument("-da", "--data_aug", type=int, default=6,
                         help="Training epochs for each substitute.")
     parser.add_argument("-l", "--lmbda", type=float, default=0.2,
                         help="Lambda in https://arxiv.org/abs/1602.02697.")
-    parser.add_argument("-td", "--training_dir", type=str, default="./tmp",
+    parser.add_argument("-td", "--train_dir", type=str, default="./tmp",
                         help="Directory storing the saved model.")
     parser.add_argument("-f", "--filename", type=str, default="mnist.ckpt",
                         help="Filename to save model under.")
@@ -103,17 +103,18 @@ if __name__ == "__main__":
                         'learning_rate': args.learning_rate}
         eval_params = {'batch_size': args.batch_size}
         # train on dataset
-        model_train(sess, x, y, predictions, trX, trY,
-                    args=train_params)
+        model_train(sess, x, y, predictions, trX, trY, args=train_params)
         saver.save(sess, save_path)
 
     # Evaluate the accuracy of the MNIST model on legitimate validation
     # examples
     evaluate_legit(sess, x, y, predictions, valX, valY, eval_params)
+    import pdb
+    pdb.set_trace()
 
-    if args.attack is "jsma":
+    if args.attack == "jsma":
         jsma(sess, model, x, y, predictions, teX, teY)
-    elif args.attack is "blackbox":
+    elif args.attack == "blackbox":
         # Initialize substitute training set reserved for adversary
         subX = teX[:args.holdout]
         subY = np.argmax(teY[:args.holdout], axis=1)
@@ -144,34 +145,32 @@ if __name__ == "__main__":
                               args=eval_params)
         print('Test accuracy of oracle on adversarial examples generated '
               'using the substitute: ' + str(accuracy))
-    elif args.attack is "fgsm":
-        pass
-    # craft adversarial examples using fgsm
-    adv_x, preds_adv, X_test_adv = whitebox_fgsm(sess, model, x, args,
-                                                 teX, eval_params)
+    elif args.attack == "fgsm":
+        # craft adversarial examples using fgsm
+        adv_x, preds_adv, X_test_adv = whitebox_fgsm(sess, model, x, args,
+                                                     teX, eval_params)
 
-    # Evaluate the accuracy of the MNIST model on adversarial examples
-    # X_test_adv might change to X_test as in the new cleverhans example
-    adv1_accuracy = model_eval(sess, x, y, preds_adv, X_test_adv, teY,
-                               args=eval_params)
-    print("Test accuracy on adversarial examples: ".format(adv1_accuracy))
+        # Evaluate the accuracy of the MNIST model on adversarial examples
+        # X_test_adv might change to X_test as in the new cleverhans example
+        adv1_accuracy = model_eval(sess, x, y, preds_adv, X_test_adv, teY,
+                                   args=eval_params)
+        print("Test accuracy on adversarial examples: ".format(adv1_accuracy))
 
-    print("Repeating the process, using aversarial training")
-    # Redefine TF model graph
-    model_2 = eval(args.model + '()')
-    predictions_2 = model_2(x)
-    fgsm = FastGradientMethod(model_2, sess=sess)
-    adv_x_2 = fgsm.generate(x, **{'eps': args.epsilon})
-    predictions_2_adv = model_2(adv_x_2)
+        print("Repeating the process, using aversarial training")
+        # Redefine TF model graph
+        model_2 = eval(args.model + '()')
+        predictions_2 = model_2(x)
+        fgsm = FastGradientMethod(model_2, sess=sess)
+        adv_x_2 = fgsm.generate(x, **{'eps': args.eps})
+        predictions_2_adv = model_2(adv_x_2)
 
-    pointer = evaluate_adversarial(sess, x, y, predictions_2,
-                                   predictions_2_adv,
-                                   teX, teY, args=eval_params)
+        pointer = evaluate_adversarial(sess, x, y, predictions_2,
+                                       teX, teY, eval_params)
 
-    # Perform adversarial training
-    model_train(sess, x, y, predictions_2, trX, trY,
-                predictions_adv=predictions_2_adv,
-                evaluate=pointer, args=train_params)
+        # Perform adversarial training
+        model_train(sess, x, y, predictions_2, trX, trY,
+                    predictions_adv=predictions_2_adv,
+                    evaluate=pointer, args=train_params)
 
     if args.pair_visual is not None:
         pair_visual(teX[args.pair_visual].reshape(28, 28),
@@ -203,3 +202,6 @@ if __name__ == "__main__":
                          teX, X_test_adv,
                          teY, epochs=args.epochs,
                          batch_size=args.batch_size)
+
+    # Close TF session
+    sess.close()
