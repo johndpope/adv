@@ -19,7 +19,8 @@ from cleverhans.utils import cnn_model, pair_visual, grid_visual
 from models import hierarchical, irnn, mlp, siamese, identity_model
 from models import mlp_lle, cnn_lle, cnn_model
 from utils import rank_classifiers, rank_features
-from attacks import setup_config, setup_data
+from attacks import setup_config, setup_data, evaluate_legit
+from attacks import evaluate_adversarial, whitebox_fgsm
 
 
 if __name__ == "__main__":
@@ -90,37 +91,51 @@ if __name__ == "__main__":
                     'learning_rate': args.learning_rate}
     eval_params = {'batch_size': args.batch_size}
 
-    def evaluate_legit():
-        accuracy = model_eval(sess, x, y, predictions,
-                              X, Y, args=eval_params)
-        print("Test accuracy on legitimate test examples: {}"
-              .format(accuracy))
-        return accuracy
+    acc = evaluate_legit(sess, x, y, predictions, valX, valY,
+                         eval_params)
 
     # train on dataset
-    model_train(sess, x, y, predictions, X_train, Y_train,
-                evaluate=evaluate_legit, args=train_params)
+    model_train(sess, x, y, predictions, trX, trY,
+                evaluate=acc, args=train_params)
 
-    # Craft adversarial examples using Fast Gradient Sign Method (FGSM)
-    fgsm = FastGradientMethod(model, sess=sess)
-    fgsm_params = {'eps': args.eps}
-    adv_x = fgsm.generate(x, **fgsm_params)
-    preds_adv = model(adv_x)
-    X_test_adv, = batch_eval(sess, [x], [adv_x], [X_test],
-                             args=eval_params)
-    assert X_test_adv.shape[0] == 10000, X_test_adv.shape
+    # craft adversarial examples using fgsm
+    adv_x, preds_adv, X_test_adv = whitebox_fgsm(sess, model, x, args,
+                                                 teX, eval_params)
+
+    # Evaluate the accuracy of the MNIST model on adversarial examples
+    # X_test_adv might change to X_test as in the new cleverhans example
+    adv1_accuracy = model_eval(sess, x, y, preds_adv, X_test_adv, teY,
+                               args=eval_params)
+    print("Test accuracy on adversarial examples: ".format(adv1_accuracy))
+
+    print("Repeating the process, using aversarial training")
+    # Redefine TF model graph
+    model_2 = eval(args.model + '()')
+    predictions_2 = model_2(x)
+    fgsm = FastGradientMethod(model_2, sess=sess)
+    adv_x_2 = fgsm.generate(x, **{'eps': args.epsilon})
+    predictions_2_adv = model_2(adv_x_2)
+
+    pointer = evaluate_adversarial(sess, x, y, predictions_2,
+                                   predictions_2_adv,
+                                   teX, teY, args=eval_params)
+
+    # Perform adversarial training
+    model_train(sess, x, y, predictions_2, trX, trY,
+                predictions_adv=predictions_2_adv,
+                evaluate=pointer, args=train_params)
 
     if args.pair_visual is not None:
-        pair_visual(X_test[args.pair_visual].reshape(28, 28),
+        pair_visual(teX[args.pair_visual].reshape(28, 28),
                     X_test_adv[args.pair_visual].reshape(28, 28))
 
     if args.grid_visual is True:
         if args.dataset == "mnist":
-            labels = np.unique(np.argmax(Y_train, axis=1))
-            data = X_train[labels]
+            labels = np.unique(np.argmax(trY, axis=1))
+            data = trX[labels]
         else:
-            labels = np.unique(np.argmax(Y_test, axis=1))
-            data = X_test[labels]
+            labels = np.unique(np.argmax(teY, axis=1))
+            data = teX[labels]
         grid_visual(np.hstack((labels, data)))
 
     if args.rank_classifiers is True:
@@ -135,40 +150,8 @@ if __name__ == "__main__":
                   ("irnn", ir),
                   ("identity_model", idd)]
 
-        rank_classifiers(models, X_train, Y_train, X_test, X_test_adv,
-                         Y_test, epochs=args.epochs,
+        rank_classifiers(models, np.vstack((trX, valX)),
+                         np.vstack((trY, valY)),
+                         teX, X_test_adv,
+                         teY, epochs=args.epochs,
                          batch_size=args.batch_size)
-
-    # Evaluate the accuracy of the MNIST model on adversarial examples
-    # X_test_adv might change to X_test as in the new cleverhans example
-    adv1_accuracy = model_eval(sess, x, y, preds_adv, X_test_adv, Y_test,
-                               args=eval_params)
-    print("Test accuracy on adversarial examples: ".format(adv1_accuracy))
-
-    print("Repeating the process, using aversarial training")
-    # Redefine TF model graph
-    model_2 = eval(args.model + '()')
-    predictions_2 = model_2(x)
-    fgsm2 = FastGradientMethod(model_2, sess=sess)
-    adv_x_2 = fgsm.generate(x, **fgsm_params)
-    predictions_2_adv = model_2(adv_x_2)
-
-    def evaluate_adversarial():
-        # Evaluate the accuracy of the adversarialy trained MNIST model on
-        # legitimate test examples
-        adv2_accuracy = model_eval(sess, x, y, predictions_2, X_test, Y_test,
-                                   args=eval_params)
-        print("Test accuracy on legitimate test examples: {}"
-              .format(adv2_accuracy))
-
-        # Evaluate the accuracy of the adversarially trained MNIST model on
-        # adversarial examples
-        adv3_accuracy = model_eval(sess, x, y, predictions_2_adv, X_test,
-                                   Y_test, args=eval_params)
-        print("Test accuracy on adversarial examples: {}"
-              .format(adv3_accuracy))
-
-    # Perform adversarial training
-    model_train(sess, x, y, predictions_2, X_train, Y_train,
-                predictions_adv=predictions_2_adv,
-                evaluate=evaluate_adversarial, args=train_params)
