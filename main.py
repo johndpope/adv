@@ -20,6 +20,7 @@ from models import mlp_lle, cnn_lle
 from utils import rank_classifiers, rank_features
 from attacks import setup_config, setup_data, evaluate_legit
 from attacks import evaluate_adversarial, whitebox_fgsm, jsma
+from attacks import prep_blackbox, substitute_model, train_sub
 
 
 if __name__ == "__main__":
@@ -72,6 +73,10 @@ if __name__ == "__main__":
                         help="Filename to save model under.")
     parser.add_argument("-nas", "--nb_attack_samples", type=int, default=10,
                         help="Nb ot test set examples to attack")
+    parser.add_argument("-rows", "--img_rows", type=int, default=28,
+                        help="Image height dimension.")
+    parser.add_argument("-cols", "--img_cols", type=int, default=28,
+                        help="Image width dimension.")
     args = parser.parse_args()
 
     sess = setup_config()
@@ -112,7 +117,39 @@ if __name__ == "__main__":
 
     if args.attack is "jsma":
         jsma(sess, model, x, y, predictions, teX, teY)
+    elif args.attack is "blackbox":
+        # Initialize substitute training set reserved for adversary
+        subX = teX[:args.holdout]
+        subY = np.argmax(teY[:args.holdout], axis=1)
 
+        # Redefine test set as remaining samples unavailable to adversaries
+        teX = teX[args.holdout:]
+        teY = teY[args.holdout:]
+
+        # Simulate the black-box model locally
+        # You could replace this by a remote labeling API for instance
+        print("Preparing the black-box model.")
+        model, bbox_preds = prep_blackbox(sess, x, y, trX, trY, teX, teY)
+
+        print("Training the substitute model.")
+        # Train substitute using method from https://arxiv.org/abs/1602.02697
+        model_sub, preds_sub = train_sub(sess, x, y, bbox_preds, subX, subY)
+
+        # Initialize the Fast Gradient Sign Method (FGSM) attack object.
+        fgsm_par = {'eps': 0.3, 'ord': np.inf, 'clip_min': 0., 'clip_max': 1.}
+        fgsm = FastGradientMethod(model_sub, sess=sess)
+
+        # Craft adversarial examples using the substitute
+        x_adv_sub = fgsm.generate(x, **fgsm_par)
+
+        # Evaluate the accuracy of the "black-box" model on adversarial
+        # examples
+        accuracy = model_eval(sess, x, y, model(x_adv_sub), teX, teY,
+                              args=eval_params)
+        print('Test accuracy of oracle on adversarial examples generated '
+              'using the substitute: ' + str(accuracy))
+    elif args.attack is "fgsm":
+        pass
     # craft adversarial examples using fgsm
     adv_x, preds_adv, X_test_adv = whitebox_fgsm(sess, model, x, args,
                                                  teX, eval_params)
