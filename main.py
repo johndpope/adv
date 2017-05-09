@@ -10,16 +10,19 @@ import os
 # from keras.utils.visualize_util import plot
 
 import tensorflow as tf
+from keras import backend as K
 
-from cleverhans.attacks import FastGradientMethod
+from cleverhans.attacks import FastGradientMethod, SaliencyMapMethod
+from cleverhans.utils_tf import model_argmax
 from cleverhans.utils import cnn_model, pair_visual, grid_visual
+from cleverhans.utils import other_classes
 from cleverhans.utils_tf import model_train, model_eval
 
 from models import hierarchical, irnn, mlp, identity_model
 from models import mlp_lle, cnn_lle
 from utils import rank_classifiers, rank_features
-from attacks import setup_config, setup_data, evaluate_legit
-from attacks import evaluate_adversarial, whitebox_fgsm, jsma
+from attacks import setup_config, setup_data
+from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
 from attacks import prep_blackbox, substitute_model, train_sub
 
 
@@ -75,7 +78,9 @@ if __name__ == "__main__":
                         help="Nb ot test set examples to attack")
     args = parser.parse_args()
 
+    K.set_learning_phase(0)  # without this causes error during learning
     sess = setup_config()
+    # tf.GraphKeys.VARIABLES = tf.GraphKeys.GLOBAL_VARIABLES
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
 
     # Define TF model graph
@@ -83,37 +88,137 @@ if __name__ == "__main__":
     model.summary()
     predictions = model(x)
     print("Defined TensorFlow graph.")
-
-    if args.plot_arch is True:
-        plot(model, to_file=eval(args.model + '.png'), show_shapes=True,
-             show_layer_names=True)
-
-    if args.rank_features is True:
-        rank_features(np.vstack((trX, valX)).reshape(-1, 784),
-                      np.argmax(np.vstack((trY, valY)), axis=1))
+    # tf.global_variables_initializer()
+    train_params = {'nb_epochs': args.epochs,
+                    'batch_size': args.batch_size,
+                    'learning_rate': args.learning_rate}
+    eval_params = {'batch_size': args.batch_size}
 
     # Train an MNIST model if it does not exist in the train_dir folder
-    saver = tf.train.Saver()
-    save_path = os.path.join(args.train_dir, args.filename)
-    if os.path.isfile(save_path):
-        saver.restore(sess, os.path.join(args.train_dir, args.filename))
-    else:
-        train_params = {'nb_epochs': args.epochs,
-                        'batch_size': args.batch_size,
-                        'learning_rate': args.learning_rate}
-        eval_params = {'batch_size': args.batch_size}
-        # train on dataset
-        model_train(sess, x, y, predictions, trX, trY, args=train_params)
-        saver.save(sess, save_path)
+    # saver = tf.train.Saver()
+    # save_path = os.path.join(args.train_dir, args.filename)
+    # if os.path.isfile(save_path):
+    #     saver.restore(sess, os.path.join(args.train_dir, args.filename))
+    # else:
+    # train on dataset
+    model_train(sess, x, y, predictions, trX, trY, args=train_params)
+    # saver.save(sess, save_path)
 
     # Evaluate the accuracy of the MNIST model on legitimate validation
     # examples
-    evaluate_legit(sess, x, y, predictions, valX, valY, eval_params)
-    import pdb
-    pdb.set_trace()
+    accuracy = model_eval(sess, x, y, predictions, valX, valY,
+                          args=eval_params)
+    print("Test accuracy on legitimate test examples: {}"
+          .format(accuracy))
 
     if args.attack == "jsma":
-        jsma(sess, model, x, y, predictions, teX, teY)
+        # jsma_attack(sess, model, x, y, predictions, args, teX, teY)
+        ###########################################################################
+        # Craft adversarial examples using the Jacobian-based saliency map approach
+        ###########################################################################
+        print('Crafting ' + str(args.nb_attack_samples) + ' * ' +
+              str(args.nb_classes-1) + ' adversarial examples')
+
+        img_rows, img_cols, nb_channels = teX[0].shape
+
+        # Keep track of success (adversarial example classified in target)
+        results = np.zeros((args.nb_classes, args.nb_attack_samples),
+                           dtype='i')
+
+        # Rate of perturbed features for each test set example and target class
+        perturbations = np.zeros((args.nb_classes, args.nb_attack_samples),
+                                 dtype='f')
+
+        # Initialize our array for grid visualization
+        grid_shape = (args.nb_classes,
+                      args.nb_classes,
+                      img_rows,
+                      img_cols,
+                      nb_channels)
+        grid_viz_data = np.zeros(grid_shape, dtype='f')
+
+        # Define the SaliencyMapMethod attack object
+        jsma = SaliencyMapMethod(model, back='tf', sess=sess)
+
+        # Loop over the samples we want to perturb into adversarial examples
+        for sample_ind in xrange(0, args.nb_attack_samples):
+            print('--------------------------------------')
+            print("Attacking input {}/{}".format(sample_ind + 1,
+                                                 args.nb_attack_samples))
+
+            # We want to find an adversarial example for each possible target class
+            # (i.e. all classes that differ from the label given in the dataset)
+            current_class = int(np.argmax(teY[sample_ind]))
+            target_classes = other_classes(args.nb_classes, current_class)
+
+            # For the grid visualization, keep original images along the diagonal
+            grid_viz_data[current_class, current_class, :, :, :] = np.reshape(
+                teX[sample_ind:(sample_ind+1)],
+                (img_rows, img_cols, nb_channels))
+
+            # Loop over all target classes
+            for target in target_classes:
+                print('Generating adv. example for target class %i' % target)
+
+                # This call runs the Jacobian-based saliency map approach
+                one_hot_target = np.zeros((1, args.nb_classes), dtype=np.float32)
+                one_hot_target[0, target] = 1
+                jsma_params = {'theta': 1., 'gamma': 0.1,
+                               'nb_classes': args.nb_classes, 'clip_min': 0.,
+                               'clip_max': 1., 'targets': y,
+                               'y_val': one_hot_target}
+                import pdb
+                pdb.set_trace()
+                adv_x = jsma.generate_np(teX[sample_ind:(sample_ind+1)],
+                                         **jsma_params)
+
+                # Check if success was achieved
+                res = int(model_argmax(sess, x, predictions, adv_x) == target)
+
+                # Compute number of modified features
+                adv_x_reshape = adv_x.reshape(-1)
+                test_in_reshape = teX[sample_ind].reshape(-1)
+                nb_changed = np.where(adv_x_reshape != test_in_reshape)[0].shape[0]
+                percent_perturb = float(nb_changed) / adv_x.reshape(-1).shape[0]
+
+                # Display the original and adversarial images side-by-side
+                if args.grid_visual:
+                    if 'figure' not in vars():
+                        figure = pair_visual(
+                            np.reshape(teX[sample_ind:(sample_ind+1)],
+                                       (img_rows, img_cols)),
+                            np.reshape(adv_x,
+                                       (img_rows, img_cols)))
+                    else:
+                        figure = pair_visual(
+                            np.reshape(teX[sample_ind:(sample_ind+1)],
+                                       (img_rows, img_cols)),
+                            np.reshape(adv_x, (img_rows,
+                                       img_cols)), figure)
+
+                # Add our adversarial example to our grid data
+                grid_viz_data[target, current_class, :, :, :] = np.reshape(
+                    adv_x, (img_rows, img_cols, nb_channels))
+
+                # Update the arrays for later analysis
+                results[target, sample_ind] = res
+                perturbations[target, sample_ind] = percent_perturb
+
+        print('--------------------------------------')
+
+        # Compute the number of adversarial examples that were successfully found
+        nb_targets_tried = ((args.nb_classes - 1) * args.nb_attack_samples)
+        succ_rate = float(np.sum(results)) / nb_targets_tried
+        print('Avg. rate of successful adv. examples {0:.4f}'.format(succ_rate))
+
+        # Compute the average distortion introduced by the algorithm
+        percent_perturbed = np.mean(perturbations)
+        print('Avg. rate of perturbed features {0:.4f}'.format(percent_perturbed))
+
+        # Compute the average distortion introduced for successful samples only
+        percent_perturb_succ = np.mean(perturbations * (results == 1))
+        print('Avg. rate of perturbed features for successful '
+              'adversarial examples {0:.4f}'.format(percent_perturb_succ))
     elif args.attack == "blackbox":
         # Initialize substitute training set reserved for adversary
         subX = teX[:args.holdout]
@@ -126,11 +231,12 @@ if __name__ == "__main__":
         # Simulate the black-box model locally
         # You could replace this by a remote labeling API for instance
         print("Preparing the black-box model.")
-        model, bbox_preds = prep_blackbox(sess, x, y, trX, trY, teX, teY)
+        model, bbox_preds = prep_blackbox(sess, x, y, args, trX, trY, teX, teY)
 
         print("Training the substitute model.")
         # Train substitute using method from https://arxiv.org/abs/1602.02697
-        model_sub, preds_sub = train_sub(sess, x, y, bbox_preds, subX, subY)
+        model_sub, preds_sub = train_sub(sess, x, y, bbox_preds, subX, subY,
+                                         args)
 
         # Initialize the Fast Gradient Sign Method (FGSM) attack object.
         fgsm_par = {'eps': 0.3, 'ord': np.inf, 'clip_min': 0., 'clip_max': 1.}
@@ -152,9 +258,9 @@ if __name__ == "__main__":
 
         # Evaluate the accuracy of the MNIST model on adversarial examples
         # X_test_adv might change to X_test as in the new cleverhans example
-        adv1_accuracy = model_eval(sess, x, y, preds_adv, X_test_adv, teY,
-                                   args=eval_params)
-        print("Test accuracy on adversarial examples: ".format(adv1_accuracy))
+        accuracy = model_eval(sess, x, y, preds_adv, X_test_adv, teY,
+                              args=eval_params)
+        print("Test accuracy on adversarial examples: ".format(accuracy))
 
         print("Repeating the process, using aversarial training")
         # Redefine TF model graph
@@ -164,14 +270,22 @@ if __name__ == "__main__":
         adv_x_2 = fgsm.generate(x, **{'eps': args.eps})
         predictions_2_adv = model_2(adv_x_2)
 
-        pointer = evaluate_adversarial(sess, x, y, predictions_2,
-                                       teX, teY, eval_params)
-
         # Perform adversarial training
         model_train(sess, x, y, predictions_2, trX, trY,
                     predictions_adv=predictions_2_adv,
-                    evaluate=pointer, args=train_params)
+                    args=train_params)
 
+        adv_acc = evaluate_adversarial(sess, x, y, predictions_2,
+                                       predictions_2_adv,
+                                       teX, teY, eval_params)
+
+    if args.plot_arch is True:
+        plot(model, to_file=eval(args.model + '.png'), show_shapes=True,
+             show_layer_names=True)
+
+    if args.rank_features is True:
+        rank_features(np.vstack((trX, valX)).reshape(-1, 784),
+                      np.argmax(np.vstack((trY, valY)), axis=1))
     if args.pair_visual is not None:
         pair_visual(teX[args.pair_visual].reshape(28, 28),
                     X_test_adv[args.pair_visual].reshape(28, 28))

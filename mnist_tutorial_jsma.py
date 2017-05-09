@@ -21,7 +21,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('train_dir', '/tmp', 'Directory storing the saved model.')
 flags.DEFINE_string('filename', 'mnist.ckpt', 'Filename to save model under.')
 flags.DEFINE_boolean('viz_enabled', True, 'Enable sample visualization.')
-flags.DEFINE_integer('nb_epochs', 6, 'Number of epochs to train model')
+flags.DEFINE_integer('nb_epochs', 3, 'Number of epochs to train model')
 flags.DEFINE_integer('batch_size', 128, 'Size of training batches')
 flags.DEFINE_integer('nb_classes', 10, 'Number of classification classes')
 flags.DEFINE_integer('img_rows', 28, 'Input row dimension')
