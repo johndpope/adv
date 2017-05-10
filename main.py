@@ -286,9 +286,9 @@ if __name__ == "__main__":
     if args.rank_features is True:
         rank_features(np.vstack((trX, valX)).reshape(-1, 784),
                       np.argmax(np.vstack((trY, valY)), axis=1))
-    if args.pair_visual is not None:
-        pair_visual(teX[args.pair_visual].reshape(28, 28),
-                    X_test_adv[args.pair_visual].reshape(28, 28))
+    # if args.pair_visual is not None:
+    #     pair_visual(teX[args.pair_visual].reshape(28, 28),
+    #                 X_test_adv[args.pair_visual].reshape(28, 28))
 
     if args.grid_visual is True:
         if args.dataset == "mnist":
