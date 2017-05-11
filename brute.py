@@ -11,6 +11,7 @@ logging.basicConfig(
     filename='brute-log.txt'
 )
 
+
 def train_networks(networks, dataset):
     """Train each network.
 
@@ -31,6 +32,7 @@ def train_networks(networks, dataset):
     # Print out the top 5 networks.
     print_networks(networks[:5])
 
+
 def print_networks(networks):
     """Print a list of networks.
 
@@ -41,6 +43,7 @@ def print_networks(networks):
     logging.info('-'*80)
     for network in networks:
         network.print_network()
+
 
 def generate_network_list(nn_param_choices):
     """Generate a list of all possible networks.
@@ -76,6 +79,7 @@ def generate_network_list(nn_param_choices):
 
     return networks
 
+
 def main():
     """Brute force test every network."""
     dataset = 'cifar10'
@@ -93,6 +97,7 @@ def main():
     networks = generate_network_list(nn_param_choices)
 
     train_networks(networks, dataset)
+
 
 if __name__ == '__main__':
     main()

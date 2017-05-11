@@ -3,6 +3,7 @@ import random
 import logging
 from train import train_and_score
 
+
 class Network():
     """Represent a network and let us operate on it.
 

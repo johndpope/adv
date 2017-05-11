@@ -35,7 +35,8 @@ def get_cifar10():
     y_train = to_categorical(y_train, nb_classes)
     y_test = to_categorical(y_test, nb_classes)
 
-    return (nb_classes, batch_size, input_shape, x_train, x_test, y_train, y_test)
+    return (nb_classes, batch_size, input_shape, x_train, x_test,
+            y_train, y_test)
 
 
 def get_mnist():
@@ -119,7 +120,7 @@ def train_and_score(network, dataset):
 
     model.fit(x_train, y_train,
               batch_size=batch_size,
-              epochs=10000,  # using early stopping, so no real limit
+              nb_epoch=10000,  # using early stopping, so no real limit
               verbose=0,
               validation_data=(x_test, y_test),
               callbacks=[early_stopper])

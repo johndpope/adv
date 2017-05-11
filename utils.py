@@ -193,7 +193,7 @@ def get_classmap(model, X, nb_classes, batch_size, num_input_channels, ratio):
 
 
 def plot_classmap(model, img_path, label,
-                  nb_classes, num_input_channels=1024, ratio=16):
+                  nb_classes=10, num_input_channels=1024, ratio=16):
     """
     Plot class activation map of trained VGGCAM model
     args: VGGCAM_weight_path (str) path to trained keras VGGCAM weights

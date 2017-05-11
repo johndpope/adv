@@ -312,15 +312,15 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     inpt = Input(shape=input_shape)
     x = Dropout(0.2, input_shape=input_shape)(inpt)
     x = Convolution2D(nb_filters, 8, 8, subsample=(2, 2),
-                      border_mode='same')(inpt)
-    x = Activation('relu')(x)
+                      border_mode='same', activation='relu')(inpt)
+    # x = Activation('relu')(x)
     # x = merge([x, inpt], mode='concat', concat_axis=3)
     x = Convolution2D((nb_filters * 2), 6, 6, subsample=(2, 2),
-                      border_mode='valid')(x)
-    x = Activation('relu')(x)
+                      border_mode='valid', activation='relu')(x)
+    # x = Activation('relu')(x)
     x = Convolution2D((nb_filters * 2), 5, 5, subsample=(1, 1),
-                      border_mode='valid')(x)
-    x = Activation('relu')(x)
+                      border_mode='valid', activation='relu')(x)
+    # x = Activation('relu')(x)
     x = Dropout(0.5)(x)
     x = Flatten()(x)
     x = Dense(nb_classes)(x)
@@ -438,33 +438,31 @@ def identity_model(test=None, inpt=Input(shape=(28, 28, 1)),
     return model
 
 
-def cifar10_cnn():
+def cifar10_cnn(X_train, nb_classes=10):
     model = Sequential([
+        Convolution2D(32, 3, 3, activation='relu', border_mode='same',
+                      input_shape=X_train.shape[1:]),
+        Convolution2D(32, 3, 3, activation='relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+        Dropout(0.25),
 
-    Convolution2D(32, 3, 3, activation='relu', border_mode='same',
-                  input_shape=X_train.shape[1:]),
-    Convolution2D(32, 3, 3, activation='relu'),
-    MaxPooling2D(pool_size=(2, 2)),
-    Dropout(0.25),
+        Convolution2D(64, 3, 3, border_mode='same'),
+        Activation('relu'),
+        Convolution2D(64, 3, 3),
+        Activation('relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+        Dropout(0.25),
 
-    Convolution2D(64, 3, 3, border_mode='same'),
-    Activation('relu'),
-    Convolution2D(64, 3, 3),
-    Activation('relu'),
-    MaxPooling2D(pool_size=(2, 2)),
-    Dropout(0.25),
-
-    Flatten(),
-    Dense(512, activation='relu'),
-    Dropout(0.5),
-    Dense(nb_classes, activation='softmax')
+        Flatten(),
+        Dense(512, activation='relu'),
+        Dropout(0.5),
+        Dense(nb_classes, activation='softmax')
     ])
 
     # Let's train the model using RMSprop
     model.compile(loss='categorical_crossentropy',
                   optimizer='rmsprop',
                   metrics=['accuracy'])
-
 
     return model
 
