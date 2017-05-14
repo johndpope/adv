@@ -310,7 +310,7 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
         input_shape = (img_rows, img_cols, channels)
 
     inpt = Input(shape=input_shape)
-    x = Dropout(0.2, input_shape=input_shape)(inpt)
+    # x = Dropout(0.2, input_shape=input_shape)(inpt)
     x = Convolution2D(nb_filters, 8, 8, subsample=(2, 2),
                       border_mode='same', activation='relu')(inpt)
     # x = Activation('relu')(x)
@@ -321,12 +321,12 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     x = Convolution2D((nb_filters * 2), 5, 5, subsample=(1, 1),
                       border_mode='valid', activation='relu')(x)
     # x = Activation('relu')(x)
-    x = Dropout(0.5)(x)
+    # x = Dropout(0.5)(x)
     x = Flatten()(x)
-    x = Dense(nb_classes)(x)
+    x = Dense(nb_classes, activation='softmax')(x)
 
-    y = Activation('softmax')(x)
-    model = Model(inpt, y, name='resblock')
+    # y = Activation('softmax')(x)
+    model = Model(inpt, x, name='resblock')
     model.compile(optimizer='adam', loss='categorical_crossentropy',
                   metrics=['accuracy'])
 

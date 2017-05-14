@@ -9,6 +9,7 @@ from keras.models import load_model
 from keras.preprocessing import image
 from keras.layers.core import Lambda
 from keras.models import Sequential
+from models import cnn_model
 import sys
 import cv2
 
@@ -44,13 +45,13 @@ def register_gradient():
                 tf.cast(op.inputs[0] > 0., dtype)
 
 
-def compile_saliency_function(model, activation_layer='block5_conv3'):
+def compile_saliency_function(model, activation_layer='convolution2d_5'):
     input_img = model.input
-    # layer_dict = dict([(layer.name, layer) for layer in model.layers[1:]])
-    # layer_output = layer_dict[activation_layer].output
-    last_conv_layer = filter(lambda l: "conv" in l.name,
-                             reversed(model.layers))[0]
-    layer_output = last_conv_layer.output
+    layer_dict = dict([(layer.name, layer) for layer in model.layers[1:]])
+    layer_output = layer_dict[activation_layer].output
+    # last_conv_layer = filter(lambda l: "conv" in l.name,
+    #                          reversed(model.layers))[0]
+    # layer_output = last_conv_layer.output
     max_output = K.max(layer_output, axis=3)
     saliency = K.gradients(K.sum(max_output), input_img)[0]
     return K.function([input_img, K.learning_phase()], [saliency])
@@ -115,10 +116,10 @@ def grad_cam(input_model, image, category_index, layer_name,
     conv_output = filter(lambda l: "conv" in l.name,
                          reversed(model.layers[0].layers))[0].output
     grads = normalize(K.gradients(loss, conv_output)[0])
-    gradient_function = K.function([model.layers[0].input],
+    gradient_function = K.function([model.layers[0].input, K.learning_phase()],
                                    [conv_output, grads])
 
-    output, grads_val = gradient_function([image])
+    output, grads_val = gradient_function([image, 1])
     output, grads_val = output[0, :], grads_val[0, :, :, :]
 
     weights = np.mean(grads_val, axis=(0, 1))
@@ -144,7 +145,7 @@ def grad_cam(input_model, image, category_index, layer_name,
 
 def run_gradcam(model, model_name, image, true_label):
     # preprocessed_input = load_image(sys.argv[1])
-    preprocessed_input = np.expand_dims(image, axis=1)
+    preprocessed_input = np.expand_dims(image, axis=0)
     # model_name = sys.argv[2]  # trained model other than vgg
     # model = load_model(model_name)
     # model.compile(optimizer='adam', loss='categorical_crossentropy',
@@ -152,13 +153,13 @@ def run_gradcam(model, model_name, image, true_label):
     # model = VGG16(weights='imagenet')
     predictions = model.predict(preprocessed_input)
     # top_1 = decode_predictions(predictions)[0][0]
-    print('Predicted class:')
     # print('%s (%s) with probability %.2f' % (top_1[1], top_1[0], top_1[2]))
     print('%s (%s) with probability %.2f' % (true_label,
                                              np.argmax(predictions, axis=1),
                                              np.max(predictions, axis=1)))
 
     predicted_class = np.argmax(predictions)
+    print('Predicted class: {}'.format(predicted_class))
     cam, heatmap = grad_cam(model, preprocessed_input, predicted_class,
                             "block5_conv3")
     cv2.imwrite("gradcam.jpg", cam)
@@ -166,6 +167,6 @@ def run_gradcam(model, model_name, image, true_label):
     register_gradient()
     guided_model = modify_backprop(model, model_name, 'GuidedBackProp')
     saliency_fn = compile_saliency_function(guided_model)
-    saliency = saliency_fn([preprocessed_input, 0])
+    saliency = saliency_fn([preprocessed_input, 1])
     gradcam = saliency[0] * heatmap[..., np.newaxis]
     cv2.imwrite("guided_gradcam.jpg", deprocess_image(gradcam))
