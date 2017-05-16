@@ -6,7 +6,8 @@ from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization
 from keras.layers import Convolution2D, MaxPooling2D, Input, Lambda
 from keras.layers import LSTM, TimeDistributed, merge, SimpleRNN
 from keras.optimizers import RMSprop, Adam
-from keras.initializations import normal, identity
+# from keras.initializations import normal, identity
+from keras.initializers import normal
 from keras import backend as K
 
 np.random.seed(2017)  # for reproducibility
@@ -305,37 +306,36 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
 
     # Define the layers successively
     if K.image_dim_ordering() == 'th':
-        input_shape = (channels, img_rows, img_cols)
+        data_shape = (channels, img_rows, img_cols)
     else:
-        input_shape = (img_rows, img_cols, channels)
+        data_shape = (img_rows, img_cols, channels)
 
-    inpt = Input(shape=input_shape)
+    # inpt = Input(shape=data_shape)
     # x = Dropout(0.2, input_shape=input_shape)(inpt)
     x = Convolution2D(nb_filters, 8, 8, subsample=(2, 2),
-                      border_mode='same', activation='relu')(inpt)
-    # x = Activation('relu')(x)
-    # x = merge([x, inpt], mode='concat', concat_axis=3)
+                      border_mode='same', activation='relu',
+                      input_shape=data_shape)
     x = Convolution2D((nb_filters * 2), 6, 6, subsample=(2, 2),
                       border_mode='valid', activation='relu')(x)
-    # x = Activation('relu')(x)
     x = Convolution2D((nb_filters * 2), 5, 5, subsample=(1, 1),
                       border_mode='valid', activation='relu')(x)
-    # x = Activation('relu')(x)
     # x = Dropout(0.5)(x)
     x = Flatten()(x)
     x = Dense(nb_classes, activation='softmax')(x)
 
     # y = Activation('softmax')(x)
-    model = Model(inpt, x, name='resblock')
+    model = Model(inpt, x, name='cnn_model_mine')
     model.compile(optimizer='adam', loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
-    if logits:
-        logits_tensor = model(input_ph)
-    if logits:
-        return model, logits_tensor
-    else:
-        return model
+    return model
+
+    # if logits:
+    #     logits_tensor = model(input_ph)
+    # # if logits:
+    #     return model, logits_tensor
+    # else:
+    #     return model
 
 
 def preprocess_transfer(X_train, y_train, X_test, y_test):

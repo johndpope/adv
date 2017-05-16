@@ -5,29 +5,23 @@ from __future__ import unicode_literals
 
 import numpy as np
 import argparse
-import os
-# from keras.datasets import mnist
+import keras.backend as K
 # from keras.utils.visualize_util import plot
-
-import tensorflow as tf
-from keras import backend as K
-
-from cleverhans.attacks import FastGradientMethod, SaliencyMapMethod
-from cleverhans.utils_tf import model_argmax
-from cleverhans.utils import pair_visual, grid_visual
-from cleverhans.utils import other_classes
-from cleverhans.utils_tf import model_train, model_eval
+# from cleverhans.attacks import FastGradientMethod
+# from cleverhans.utils_tf import model_argmax
+# from cleverhans.utils import pair_visual, grid_visual
+# from cleverhans.utils import other_classes
+# from cleverhans.utils_tf import model_train, model_eval
 
 from models import hierarchical, irnn, mlp, identity_model, cnn_model
-from models import mlp_lle, cnn_lle
-from utils import rank_classifiers, rank_features
-from attacks import setup_config, setup_data
-from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
-from attacks import prep_blackbox, substitute_model, train_sub
-from grad_cam import run_gradcam
+# from models import mlp_lle, cnn_lle
+# from utils import rank_classifiers, rank_features
+from config import setup_config, setup_data
+# from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
+# from attacks import prep_blackbox, substitute_model, train_sub
 
 
-if __name__ == "__main__":
+def get_args():
     parser = argparse.ArgumentParser(description="Arguments for "
                                      "adversarial samples.")
     parser.add_argument("-b", "--batch_size", type=int, default=128,
@@ -71,17 +65,18 @@ if __name__ == "__main__":
                         help="Training epochs for each substitute.")
     parser.add_argument("-l", "--lmbda", type=float, default=0.2,
                         help="Lambda in https://arxiv.org/abs/1602.02697.")
-    parser.add_argument("-td", "--train_dir", type=str, default="./tmp",
-                        help="Directory storing the saved model.")
-    parser.add_argument("-f", "--filename", type=str, default="mnist.ckpt",
-                        help="Filename to save model under.")
     parser.add_argument("-nas", "--nb_attack_samples", type=int, default=10,
                         help="Nb ot test set examples to attack")
     args = parser.parse_args()
 
+    return args
+
+
+if __name__ == "__main__":
+
     K.set_learning_phase(0)  # without this causes error during learning
     sess = setup_config()
-    # tf.GraphKeys.VARIABLES = tf.GraphKeys.GLOBAL_VARIABLES
+    args = get_args()
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
 
     # Define TF model graph
@@ -94,17 +89,11 @@ if __name__ == "__main__":
                     'learning_rate': args.learning_rate}
     eval_params = {'batch_size': args.batch_size}
 
-    # Train an MNIST model if it does not exist in the train_dir folder
-    # saver = tf.train.Saver()
-    # save_path = os.path.join(args.train_dir, args.filename)
-    # if os.path.isfile(save_path):
-    #     saver.restore(sess, os.path.join(args.train_dir, args.filename))
-    # else:
+    import pdb
+    pdb.set_trace()
     # train on dataset
-    # model_train(sess, x, y, predictions, trX, trY, args=train_params)
-    model.fit(trX, trY, nb_epoch=args.epochs, batch_size=args.batch_size,
+    model.fit(trX, trY, epochs=args.epochs, batch_size=args.batch_size,
               validation_data=(valX, valY), verbose=1)
-    # saver.save(sess, save_path)
 
     # Evaluate the accuracy of the MNIST model on legitimate validation
     # examples
@@ -149,6 +138,8 @@ if __name__ == "__main__":
         print('Test accuracy of oracle on adversarial examples generated '
               'using the substitute: ' + str(accuracy))
     elif args.attack == "fgsm":
+        import pdb
+        pdb.set_trace()
         # craft adversarial examples using fgsm
         adv_x, preds_adv, X_test_adv = whitebox_fgsm(sess, model, x, args,
                                                      teX, eval_params)
