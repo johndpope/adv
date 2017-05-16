@@ -11,7 +11,6 @@ from keras.datasets import cifar10, mnist
 from keras.models import Sequential
 from keras.layers import Dense, Flatten, Activation, Dropout
 
-
 from cleverhans.utils import other_classes, cnn_model, pair_visual
 from cleverhans.utils_tf import model_argmax
 from cleverhans.utils_tf import model_train, model_eval, batch_eval
