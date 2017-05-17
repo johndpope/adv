@@ -7,18 +7,18 @@ import numpy as np
 import argparse
 import keras.backend as K
 # from keras.utils.visualize_util import plot
-# from cleverhans.attacks import FastGradientMethod
+from cleverhans.attacks import FastGradientMethod
 # from cleverhans.utils_tf import model_argmax
-# from cleverhans.utils import pair_visual, grid_visual
 # from cleverhans.utils import other_classes
-# from cleverhans.utils_tf import model_train, model_eval
+from cleverhans.utils_tf import model_train, model_eval
 
-from models import hierarchical, irnn, mlp, identity_model, cnn_model
+from models import cnn_model
 # from models import mlp_lle, cnn_lle
 # from utils import rank_classifiers, rank_features
 from config import setup_config, setup_data
-# from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
-# from attacks import prep_blackbox, substitute_model, train_sub
+from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
+from attacks import prep_blackbox, substitute_model, train_sub
+from utils import find_top_predictions
 
 
 def get_args():
@@ -86,19 +86,17 @@ if __name__ == "__main__":
     print("Defined TensorFlow graph.")
     train_params = {'nb_epochs': args.epochs,
                     'batch_size': args.batch_size,
-                    'learning_rate': args.learning_rate}
-    eval_params = {'batch_size': args.batch_size}
+                    'learning_rate': args.learning_rate,
+                    'keras_learning_phase': 1}
+    eval_params = {'batch_size': args.batch_size,
+                   'keras_learning_phase': 0}
 
-    import pdb
-    pdb.set_trace()
     # train on dataset
-    model.fit(trX, trY, epochs=args.epochs, batch_size=args.batch_size,
+    model.fit(trX, trY, nb_epoch=args.epochs, batch_size=args.batch_size,
               validation_data=(valX, valY), verbose=1)
 
-    # Evaluate the accuracy of the MNIST model on legitimate validation
+    # Evaluate accuracy of the MNIST model on legitimate test
     # examples
-    # accuracy = model_eval(sess, x, y, predictions, valX, valY,
-    #                       args=eval_params)
     scores = model.evaluate(teX, teY)
     print("Test accuracy on legitimate test examples: {}"
           .format(scores[1]))
@@ -138,8 +136,6 @@ if __name__ == "__main__":
         print('Test accuracy of oracle on adversarial examples generated '
               'using the substitute: ' + str(accuracy))
     elif args.attack == "fgsm":
-        import pdb
-        pdb.set_trace()
         # craft adversarial examples using fgsm
         adv_x, preds_adv, X_test_adv = whitebox_fgsm(sess, model, x, args,
                                                      teX, eval_params)
@@ -153,31 +149,8 @@ if __name__ == "__main__":
         print("Test accuracy on adversarial examples: {}"
               .format(adv_scores[1]))
 
-        tmp_preds = model.predict(teX)
-        tmp_adv_preds = model.predict(X_test_adv)
-        rows, cols = np.where(tmp_preds > 0.98)
-        labels = np.argmax(tmp_preds[rows], axis=1)[:5]
-        real_labels = np.argmax(teY[rows], axis=1)[:5]
-        accuracies = tmp_preds[rows]
-        accuracies = accuracies[:5]
-        adv_accuracies = tmp_adv_preds[rows]
-        adv_accuracies = adv_accuracies[:5]
-        imgs = teX[rows]
-        imgs = imgs[:5]
-        print("top image labels are {}".format(labels))
-        print("accuracies for top image labels are {}".format(
-            np.max(accuracies, axis=1)))
-        print("accuracies for top adv. image labels are {}".format(
-            np.max(adv_accuracies, axis=1)))
-        print("real labels for top images are {}".format(real_labels))
-        print("top images are {}".format(imgs.shape))
-        top_adv_imgs = X_test_adv[rows]
-        top_adv_imgs = top_adv_imgs[:5]
-        print("top adv. images are {}".format(top_adv_imgs.shape))
-        for key, val in enumerate(top_adv_imgs):
-            pair_visual(imgs[key].reshape(28, 28),
-                        top_adv_imgs[key].reshape(28, 28))
-            run_gradcam(model, args.model, imgs[key], real_labels[key])
+        find_top_predictions(model, args.model, 'conv2d_2', teX, teY,
+                             X_test_adv, 5)
         print("Repeating the process, using aversarial training")
         # Redefine TF model graph
         model_2 = eval(args.model + '()')

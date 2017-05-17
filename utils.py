@@ -14,6 +14,8 @@ import cv2
 import multiprocessing as mp
 import itertools
 import scipy
+from cleverhans.utils import pair_visual
+from grad_cam import run_gradcam
 
 
 def roc_auc(teY, teY_pred, counter, color, mean_tpr, mean_fpr):
@@ -492,3 +494,33 @@ def calculate_fitness(feature_vectors):
     fitness = pairwise_euclidean_distances.mean()
     + pairwise_euclidean_distances.min()
     return fitness
+
+
+def find_top_predictions(model, model_name, layer_name, teX, teY,
+                         teX_adv, count):
+    preds = model.predict(teX)
+    preds_adv = model.predict(teX_adv)
+    rows, cols = np.where(preds >= np.max(preds, axis=0))
+    targets = np.argmax(preds[rows], axis=1)[:count]
+    orig_targets = np.argmax(teY[rows], axis=1)[:count]
+    accuracies = preds[rows]
+    accuracies = accuracies[:count]
+    accuracies_adv = preds_adv[rows]
+    adv_accuracies = accuracies_adv[:count]
+    imgs = teX[targets]
+    imgs = imgs[:count]
+    print("top image labels are {}".format(targets))
+    print("accuracies for top image labels are {}".format(
+        np.max(accuracies, axis=1)))
+    print("accuracies for top adv. image labels are {}".format(
+        np.max(adv_accuracies, axis=1)))
+    print("true labels for top images are {}".format(orig_targets))
+    print("top images are {}".format(imgs.shape))
+    imgs_adv = teX_adv[rows]
+    imgs_adv = imgs_adv[:count]
+    print("top adv. images are {}".format(imgs_adv.shape))
+    for key, val in enumerate(imgs_adv):
+        pair_visual(imgs[key].reshape(28, 28),
+                    imgs_adv[key].reshape(28, 28))
+        run_gradcam(model, model_name, imgs[key], orig_targets[key],
+                    layer_name)

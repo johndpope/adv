@@ -111,10 +111,10 @@ def grad_cam(input_model, image, category_index, layer_name,
                      output_shape=target_category_loss_output_shape))
 
     loss = K.sum(model.layers[-1].output)
-    # conv_output = [l for l in model.layers[0].layers
-    #                if l.name is layer_name][0].output
-    conv_output = filter(lambda l: "conv" in l.name,
-                         reversed(model.layers[0].layers))[0].output
+    conv_output = [l for l in model.layers[0].layers
+                   if l.name is layer_name][0].output
+    # conv_output = filter(lambda l: "conv" in l.name,
+    #                      reversed(model.layers[0].layers))[0].output
     grads = normalize(K.gradients(loss, conv_output)[0])
     gradient_function = K.function([model.layers[0].input],
                                    [conv_output, grads])
@@ -143,7 +143,7 @@ def grad_cam(input_model, image, category_index, layer_name,
     return np.uint8(cam), heatmap
 
 
-def run_gradcam(model, model_name, image, true_label):
+def run_gradcam(model, model_name, image, true_label, layer_name):
     image = deprocess_image(image)
     preprocessed_input = np.expand_dims(image, axis=0)
     predictions = model.predict(preprocessed_input)
@@ -151,7 +151,7 @@ def run_gradcam(model, model_name, image, true_label):
     prob_predicted_class = np.max(predictions, axis=1)
     # top_1 = decode_predictions(predictions)[0][0]
     # print('%s (%s) with probability %.2f' % (top_1[1], top_1[0], top_1[2]))
-    print("True label {}, predicted label {}, with probability {:.2f}"
+    print("True label {}, predicted label {}, with probability {}"
           .format(true_label,
                   predicted_class,
                   prob_predicted_class)
@@ -160,7 +160,7 @@ def run_gradcam(model, model_name, image, true_label):
     print('Predicted class: {}'.format(predicted_class))
     cam, heatmap = grad_cam(model, preprocessed_input,
                             predicted_class,
-                            "block5_conv3")
+                            layer_name)
     cv2.imwrite("gradcam.jpg", cam)
 
     register_gradient()

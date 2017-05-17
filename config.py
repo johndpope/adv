@@ -36,6 +36,7 @@ def setup_config():
     sess = tf.Session()
     K.set_session(sess)
     # sess.run(tf.global_variables_initializer())
+
     return sess
 
 
