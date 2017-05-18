@@ -227,8 +227,6 @@ def jsma_attack(sess, model, x, y, preds, args, teX, teY):
             #                'nb_classes': args.nb_classes, 'clip_min': 0.,
             #                'clip_max': 1., 'targets': y,
             #                'y_val': one_hot_target}
-            import pdb
-            pdb.set_trace()
             adv_x = jsma.generate_np(teX[sample_ind:(sample_ind+1)],
                                      theta=1., gamma=0.1, nb_classes=10,
                                      clip_min=0., clip_max=1., targets=y,

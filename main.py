@@ -149,6 +149,16 @@ if __name__ == "__main__":
         print("Test accuracy on adversarial examples: {}"
               .format(adv_scores[1]))
 
+        from vis.visualization import visualize_cam
+        layer_name = 'conv2d_2'
+        layer_idx = layer_idx = [idx for idx, layer in enumerate(model.layers)
+                                 if layer.name == layer_name][0]
+        imgs = trX[np.argmax(trY, axis=1) == 5]
+        img = np.expand_dims(imgs[0], axis=0)
+        pred_class = np.argmax(model.predict(np.expand_dims(imgs[0], axis=0)))
+        print("image shape {}, predicted_class = {}".format(img.shape,
+                                                            pred_class))
+        heatmap = visualize_cam(model, layer_idx, [pred_class], img)
         find_top_predictions(model, args.model, 'conv2d_2', teX, teY,
                              X_test_adv, 5)
         print("Repeating the process, using aversarial training")
