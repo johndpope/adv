@@ -3,15 +3,14 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 import keras
 import keras.backend as K
-from keras.applications.vgg16 import (
-    VGG16, preprocess_input, decode_predictions)
-from keras.models import load_model
+from keras.applications.vgg16 import preprocess_input
+# from keras.models import load_model
 from keras.preprocessing import image
 from keras.layers.core import Lambda
 from keras.models import Sequential
-from models import cnn_model
 import sys
 import cv2
+from models import cnn_model
 
 
 def target_category_loss(x, category_index, nb_classes=10):
@@ -28,8 +27,8 @@ def normalize(x):
 
 
 def load_image(path, img_shape=(224, 224)):
-    img_path = sys.argv[1]
-    img = image.load_img(img_path, target_size=img_shape)
+    # img_path = sys.argv[1]
+    img = image.load_img(path, target_size=img_shape)
     x = image.img_to_array(img)
     x = np.expand_dims(x, axis=0)
     x = preprocess_input(x)
@@ -73,6 +72,7 @@ def modify_backprop(model, model_name, name):
         # re-instanciate a new model
         # new_model = VGG16(weights='imagenet')
         new_model = eval(model_name + '()')
+        new_model.summary()
     return new_model
 
 
@@ -112,7 +112,7 @@ def grad_cam(input_model, image, category_index, layer_name,
 
     loss = K.sum(model.layers[-1].output)
     conv_output = [l for l in model.layers[0].layers
-                   if l.name in layer_name][0].output
+                   if l.name == layer_name][0].output
     # conv_output = filter(lambda l: "conv" in l.name,
     #                      reversed(model.layers[0].layers))[0].output
     grads = normalize(K.gradients(loss, conv_output)[0])
@@ -147,6 +147,7 @@ def grad_cam(input_model, image, category_index, layer_name,
 def run_gradcam(model, model_name, image, true_label, layer_name):
     # image = deprocess_image(image)
     # preprocessed_input = np.expand_dims(image, axis=0)
+    cnn_model().summary()
     predictions = model.predict(image)
     predicted_class = np.argmax(predictions)
     prob_predicted_class = np.max(predictions, axis=1)
@@ -168,5 +169,7 @@ def run_gradcam(model, model_name, image, true_label, layer_name):
     guided_model = modify_backprop(model, model_name, 'GuidedBackProp')
     saliency_fn = compile_saliency_function(guided_model)
     saliency = saliency_fn([image, 0])
+    import pdb
+    pdb.set_trace()
     gradcam = saliency[0] * heatmap[..., np.newaxis]
     cv2.imwrite("guided_gradcam.jpg", deprocess_image(gradcam))
