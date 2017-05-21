@@ -8,12 +8,13 @@ from keras.applications.vgg16 import preprocess_input
 from keras.preprocessing import image
 from keras.layers.core import Lambda
 from keras.models import Sequential
-import sys
+# import sys
 import cv2
-from models import cnn_model
+# from models import cnn_model
+from keras.applications import VGG16
 
 
-def target_category_loss(x, category_index, nb_classes=10):
+def target_category_loss(x, category_index, nb_classes=1000):
     return tf.multiply(x, K.one_hot([category_index], nb_classes))
 
 
@@ -70,9 +71,10 @@ def modify_backprop(model, model_name, name):
                 layer.activation = tf.nn.relu
 
         # re-instanciate a new model
-        # new_model = VGG16(weights='imagenet')
-        new_model = eval(model_name + '()')
-        new_model.summary()
+        new_model = VGG16(weights='imagenet')
+        # new_model = eval(model_name +
+        #                  '(img_rows=224, img_cols=224, channels=3, nb_classes=20)')
+        # new_model.summary()
     return new_model
 
 
@@ -101,26 +103,29 @@ def deprocess_image(x):
 
 
 def grad_cam(input_model, image, category_index, layer_name,
-             nb_classes=10):
+             nb_classes=1000):
+
     model = Sequential()
     model.add(input_model)
-
-    target_layer = lambda x: target_category_loss(x, category_index,
+    target_layer = lambda x: target_category_loss(x,
+                                                  category_index,
                                                   nb_classes)
     model.add(Lambda(target_layer,
-                     output_shape=target_category_loss_output_shape))
+              output_shape=target_category_loss_output_shape))
 
-    loss = K.sum(model.layers[-1].output)
+    loss = K.mean(model.layers[-1].output)
     conv_output = [l for l in model.layers[0].layers
-                   if l.name == layer_name][0].output
+                   if l.name is layer_name][0].output
     # conv_output = filter(lambda l: "conv" in l.name,
     #                      reversed(model.layers[0].layers))[0].output
     grads = normalize(K.gradients(loss, conv_output)[0])
+    # grads /= np.max(grads)
     gradient_function = K.function([model.layers[0].input,
                                     K.learning_phase()],
                                    [conv_output, grads])
 
     output, grads_val = gradient_function([image, 0])
+    # grads_val = np.nan_to_num(grads_val)
     output, grads_val = output[0, :], grads_val[0, :, :, :]
 
     weights = np.mean(grads_val, axis=(0, 1))
@@ -145,14 +150,11 @@ def grad_cam(input_model, image, category_index, layer_name,
 
 
 def run_gradcam(model, model_name, image, true_label, layer_name):
-    # image = deprocess_image(image)
-    # preprocessed_input = np.expand_dims(image, axis=0)
-    cnn_model().summary()
+    image = deprocess_image(image).astype('float32')
+    image = np.expand_dims(image, axis=0)
     predictions = model.predict(image)
     predicted_class = np.argmax(predictions)
     prob_predicted_class = np.max(predictions, axis=1)
-    # top_1 = decode_predictions(predictions)[0][0]
-    # print('%s (%s) with probability %.2f' % (top_1[1], top_1[0], top_1[2]))
     print("True label {}, predicted label {}, with probability {}"
           .format(true_label,
                   predicted_class,
@@ -160,16 +162,17 @@ def run_gradcam(model, model_name, image, true_label, layer_name):
           )
 
     print('Predicted class: {}'.format(predicted_class))
+    image = np.expand_dims(deprocess_image(image), axis=0)
+    print("image shape {}".format(image.shape))
     cam, heatmap = grad_cam(model, image,
                             predicted_class,
-                            layer_name)
+                            layer_name,
+                            nb_classes=1000)
     cv2.imwrite("gradcam.jpg", cam)
 
     register_gradient()
     guided_model = modify_backprop(model, model_name, 'GuidedBackProp')
-    saliency_fn = compile_saliency_function(guided_model)
+    saliency_fn = compile_saliency_function(guided_model, 'block5_conv3')
     saliency = saliency_fn([image, 0])
-    import pdb
-    pdb.set_trace()
     gradcam = saliency[0] * heatmap[..., np.newaxis]
     cv2.imwrite("guided_gradcam.jpg", deprocess_image(gradcam))
