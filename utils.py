@@ -7,14 +7,15 @@ from sklearn.metrics import classification_report, accuracy_score
 from sklearn.metrics import roc_curve, auc
 from sklearn.feature_selection import SelectFromModel
 from sklearn.preprocessing import normalize
-from deap import algorithms, base, creator, tools
+from deap import algorithms, tools
 from scipy.spatial import distance
 from matplotlib import pyplot as plt
 from skimage.measure import compare_ssim
 import cv2
-import multiprocessing as mp
+# import multiprocessing as mp
 import itertools
 import scipy
+from operator import attrgetter
 from cleverhans.utils import pair_visual
 from grad_cam import run_gradcam
 
@@ -128,11 +129,11 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
     plt.show()
 
 
-def plot_mnist(X, y, X_embedded, name, min_dist=10.0):
+def plot_2d_embedding(X, y, X_embedded, name, min_dist=10.0):
     fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(frameon=False)
     plt.title("\\textbf{MNIST dataset} -- Two-dimensional "
-              "embedding of 60,000 handwritten digits with %s" % name)
+              "embedding of %s" % name)
     plt.setp(ax, xticks=(), yticks=())
     plt.subplots_adjust(left=0.0, bottom=0.0, right=1.0, top=0.9,
                         wspace=0.0, hspace=0.0)
@@ -153,6 +154,18 @@ def plot_mnist(X, y, X_embedded, name, min_dist=10.0):
                                       cmap=plt.cm.gray_r),
                 X_embedded[i])
             ax.add_artist(imagebox)
+
+
+def ga_plot_results(filename, gen, fitness_maxs, fitness_avgs):
+    fig, ax1 = plt.subplots()
+    line1 = ax1.plot(gen, fitness_maxs, "r-", label="Maximum Fitness")
+    line2 = ax1.plot(gen, fitness_avgs, "b-", label="Average Fitness")
+    lines = line1 + line2
+    labs = [line.get_label() for line in lines]
+    ax1.legend(lines, labs, loc="lower right")
+    ax1.set_xlabel('Generation')
+    ax1.set_ylabel('Fitness')
+    plt.savefig('{}'.format(filename))
 
 
 def global_average_pooling(x):
@@ -346,48 +359,78 @@ def update_model_weights(model, new_weights):
         layer.set_weights(new_layer_weights_list)
 
 
-def ga_fitness(individual):
-    sessionid = mp.current_process()._identity[0]
+# This is a modified version of the eaSimple algorithm included with DEAP here:
+# https://github.com/DEAP/deap/blob/master/deap/algorithms.py#L84
+def eaSimpleModified(population, toolbox, cxpb, mutpb, ngen, stats=None,
+                     halloffame=None, verbose=__debug__):
+    logbook = tools.Logbook()
+    logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
 
-    # Instantiate the control policy
-    # Load the ConvNet weights
-    pretrained_weights_cnn = np.loadtxt('{}'
-                                        .format(PRETRAINED_WEIGHTS_CNN))
+    # Evaluate the individuals with an invalid fitness
+    invalid_ind = [ind for ind in population if not ind.fitness.valid]
+    fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+    for ind, fit in zip(invalid_ind, fitnesses):
+        ind.fitness.values = fit
 
-    POLICY = CNNRNNPolicy(cnn_weights=pretrained_weights_cnn)
+    if halloffame is not None:
+        halloffame.update(population)
 
-    # Instantiate the simulator environment
-    TORCS = pyclient.TORCS(episode_length=500,
-                           policy=POLICY,
-                           sessionid=sessionid)
+    record = stats.compile(population) if stats else {}
+    logbook.record(gen=0, nevals=len(invalid_ind), **record)
+    if verbose:
+        print(logbook.stream)
 
-    # The GA will update the RNN parameters to evaluate candidate solutions
-    update_model_weights(POLICY.rnn, np.asarray(individual))
-    POLICY.rnn.reset_states()
+    best = []
 
-    # Run an episode on the track and its mirror image and measure the average
-    # fitness
-    fitness = 0
+    best_ind = max(population, key=attrgetter("fitness"))
+    best.append(best_ind)
 
-    fitness1 = TORCS.run(track_id=1)
-    fitness2 = TORCS.run(track_id=2)
+    # Begin the generational process
+    for gen in range(1, ngen + 1):
+        # Select the next generation individuals
+        offspring = toolbox.select(population, len(population))
 
-    fitness = min(fitness1, fitness2)
+        # Vary the pool of individuals
+        offspring = algorithms.varAnd(offspring, toolbox, cxpb, mutpb)
 
-    return fitness,
+        # Evaluate the individuals with an invalid fitness
+        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+        for ind, fit in zip(invalid_ind, fitnesses):
+            ind.fitness.values = fit
+
+        # Save the best individual from the generation
+        best_ind = max(offspring, key=attrgetter("fitness"))
+        best.append(best_ind)
+
+        # Update the hall of fame with the generated individuals
+        if halloffame is not None:
+            halloffame.update(offspring)
+
+        # Replace the current population by the offspring
+        population[:] = offspring
+
+        # Append the current generation statistics to the logbook
+        record = stats.compile(population) if stats else {}
+        logbook.record(gen=gen, nevals=len(invalid_ind), **record)
+        if verbose:
+            print(logbook.stream)
+
+    return population, logbook, best
 
 
-def run(num_gen, n, mutpb, cxpb):
+def ga_run(toolbox, num_gen=10, n=100, mutpb=0.8, cxpb=0.5):
     """
-    Runs multiple episodes, evolving the RNN parameters using a GA
+    Runs multiple episodes, evolving the model parameters using a GA
     """
+    np.random.seed(2017)
     history = tools.History()
     # Decorate the variation operators
     toolbox.decorate("mate", history.decorator)
     toolbox.decorate("mutate", history.decorator)
 
-    pool = mp.Pool(processes=12)
-    toolbox.register("map", pool.map)
+    # pool = mp.Pool(processes=12)
+    # toolbox.register("map", pool.map)
 
     pop = toolbox.population(n=n)
     history.update(pop)
@@ -399,62 +442,75 @@ def run(num_gen, n, mutpb, cxpb):
     stats.register("min", np.min)
     stats.register("max", np.max)
 
-    pop, log = algorithms.eaSimple(pop,
-                                   toolbox,
-                                   cxpb=cxpb,
-                                   mutpb=mutpb,
-                                   ngen=num_gen,
-                                   stats=stats,
-                                   halloffame=hof,
-                                   verbose=True)
+    # pop, log = algorithms.eaSimple(pop,
+    #                                toolbox,
+    #                                cxpb=cxpb,
+    #                                mutpb=mutpb,
+    #                                ngen=num_gen,
+    #                                stats=stats,
+    #                                halloffame=hof,
+    #                                verbose=True)
+    pop, log = algorithms.eaSimpleModified(pop,
+                                           toolbox,
+                                           cxpb=cxpb,
+                                           mutpb=mutpb,
+                                           ngen=num_gen,
+                                           stats=stats,
+                                           halloffame=hof,
+                                           verbose=True)
 
     return pop, log, hof, history
 
 
-def setup_ga():
-    # Set up the genetic algorithm to evolve the RNN parameters
-    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Individual", list, fitness=creator.FitnessMax)
-
-    INDIVIDUAL_SIZE = 33
-
-    toolbox = base.Toolbox()
-    toolbox.register("attr_float", np.random.uniform, -1.5, 1.5)
-    toolbox.register("individual",
-                     tools.initRepeat,
-                     creator.Individual,
-                     toolbox.attr_float,
-                     n=INDIVIDUAL_SIZE)
-    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-
-    toolbox.register("evaluate", ga_fitness)
-    toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.5, indpb=0.10)
-
-    # Use tournament selection: choose a subset consisting of k members of that
-    # population, and from that subset, choose the best individual
-    toolbox.register("select", tools.selTournament, tournsize=2)
-
-
-def main():
+def ga_train(model, data, output_dir='./tmp'):
     try:
         NUM_GENERATIONS = 100
         POPULATION_SIZE = 96
-        MUTATION_PROB = 0.02
+        # MUTATION_PROB = 0.02
         CROSSOVER_PROB = 0.5
 
-        pop, log, hof, history = run(num_gen=NUM_GENERATIONS,
-                                     n=POPULATION_SIZE,
-                                     cxpb=CROSSOVER_PROB,
-                                     mutpb=MUTATION_PROB)
+        MUTATION_PROBS = [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+
+        for mutation_prob in MUTATION_PROBS:
+            pop, log, hof, history, best_per_gen = ga_run(
+                num_gen=NUM_GENERATIONS,
+                n=POPULATION_SIZE,
+                cxpb=CROSSOVER_PROB,
+                mutpb=mutation_prob
+            )
 
         best = np.asarray(hof)
         gen = log.select("gen")
         fitness_maxs = log.select("max")
         fitness_avgs = log.select("avg")
 
+        # try this
+        ga_plot_results(filename='{}train_cnn_ga_mutpb_{}.png'
+                        .format(output_dir,
+                                str(mutation_prob).replace('.', '_')),
+                        gen=gen,
+                        fitness_maxs=fitness_maxs,
+                        fitness_avgs=fitness_avgs)
+
+        np.savetxt('{}train_cnn_ga_mutpb_{}.out'.
+                   format(output_dir,
+                          str(mutation_prob).replace('.', '_')), best)
+
+        # Plot the feature vectors produced by the best individual from each
+        # generation
+        for gen in xrange(len(best_per_gen)):
+            update_model_weights(model, np.asarray(best_per_gen[gen]))
+            feature_vectors = calculate_model_output(model, data)
+            # plot_feature_vectors(feature_vectors,
+            #                      filename='{}feature_vectors_{}__{}.png'
+            #                      .format(output_dir,
+            #                              str(mutation_prob)
+            #                              .replace('.', '_'),
+            #                              gen))
+
+
+        # or that
         # Plot the results
-        from matplotlib import pyplot as plt
         plt.plot(fitness_maxs)  # , '.')
         plt.plot(fitness_avgs)  # , '.')
         plt.legend(['maximum', 'average'], loc=4)
@@ -475,8 +531,6 @@ def main():
         plt.savefig('learning_history.png')
         plt.show()
 
-        import IPython
-        IPython.embed()
     finally:
         pass
 

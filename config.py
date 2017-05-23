@@ -10,6 +10,8 @@ from keras import backend as K
 from keras.utils.np_utils import to_categorical
 from keras.datasets import cifar10, mnist
 from sklearn.model_selection import train_test_split
+from deap import base, creator, tools
+from utils import calculate_fitness, update_model_weights, calculate_model_output
 
 
 def setup_config():
@@ -98,3 +100,42 @@ def setup_data(args):
     print("teY = {}".format(teY.shape))
 
     return trX, trY, valX, valY, teX, teY, x, y
+
+
+def ga_fitness(model, individual, data):
+    # The GA will update the RNN parameters to evaluate candidate solutions
+    update_model_weights(model, np.asarray(individual))
+
+    # Calculate the output feature vectors
+    feature_vectors = calculate_model_output(model, data)
+
+    # Check their fitness
+    fitness = calculate_fitness(feature_vectors)
+
+    return fitness
+
+
+def ga_setup(individual_population_size=33):
+    # Set up the genetic algorithm to evolve the RNN parameters
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+    creator.create("Individual", list, fitness=creator.FitnessMax)
+
+    toolbox = base.Toolbox()
+    toolbox.register("attr_float", np.random.uniform, -1.5, 1.5)
+    toolbox.register("individual",
+                     tools.initRepeat,
+                     creator.Individual,
+                     toolbox.attr_float,
+                     n=individual_population_size)
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+    toolbox.register("evaluate", ga_fitness)
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.5, indpb=0.10)
+
+    # Use tournament selection: choose a subset consisting of k members of that
+    # population, and from that subset, choose the best individual
+    toolbox.register("select", tools.selTournament, tournsize=10)  # optimize
+    # this hyperparameter
+
+    return toolbox
