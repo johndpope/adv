@@ -10,6 +10,7 @@ from sklearn.preprocessing import normalize
 from deap import algorithms, base, creator, tools
 from scipy.spatial import distance
 from matplotlib import pyplot as plt
+from skimage.measure import compare_ssim
 import cv2
 import multiprocessing as mp
 import itertools
@@ -480,9 +481,12 @@ def main():
         pass
 
 
-def calculate_cnn_output(model, input):
+def calculate_model_output(model, input, multiple=False):
     output = model.predict(input)
-    output = output.reshape(output.shape[0], output.shape[1])
+    if multiple:
+        output = output.reshape(output.shape[0], output.shape[1])
+    else:
+        output = output.reshape(output.shape[1])
 
     normalized_output = normalize(output)
 
@@ -493,6 +497,7 @@ def calculate_fitness(feature_vectors):
     pairwise_euclidean_distances = distance.pdist(feature_vectors, 'euclidean')
     fitness = pairwise_euclidean_distances.mean()
     + pairwise_euclidean_distances.min()
+
     return fitness
 
 
@@ -524,3 +529,31 @@ def find_top_predictions(model, model_name, layer_name, teX, teY,
                     imgs_adv[key].reshape(28, 28))
         run_gradcam(model, model_name, imgs[key], orig_targets[key],
                     layer_name)
+
+
+def mse(imgA, imgB):
+    if imgA.ndim == 3 and imgB.ndim == 3:
+        if imgA.shape[2] == 3 and imgB.shape[2] == 3:
+            err = 0.
+            for c in xrange(imgA.shape[2]):
+                err += np.sum((imgA[:, :, c].astype('float32')
+                               - imgB[:, :, c].astype('float32')) ** 2)
+            err /= np.prod(imgA.shape[:3])  # maybe also x3
+        else:
+            if imgA.ndim == 3 and imgB.ndim == 3:
+                if imgA.shape[2] == 1 and imgB.shape[2] == 1:
+                    imgA = imgA.reshape(imgA.shape[0], imgA.shape[1])
+                    imgB = imgB.reshape(imgB.shape[0], imgB.shape[1])
+
+            err = np.sum((imgA.astype('float32') -
+                          imgB.astype('float32')) ** 2)
+            err /= float(np.prod(imgA.shape[:2]))
+
+    psnr = 20.0 * np.log10(np.max(imgA)) - 10.0 * np.log10(err)  # np.max(imgA)
+    # should be 255.
+
+    return psnr, err
+
+
+def ssim(imgA, imgB):
+    return compare_ssim(imgA, imgB, multichannel=True)
