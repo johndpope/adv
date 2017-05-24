@@ -102,7 +102,7 @@ def setup_data(args):
     return trX, trY, valX, valY, teX, teY, x, y
 
 
-def ga_fitness(model, individual, data):
+def ga_fitness(individual, model, data):
     # The GA will update the RNN parameters to evaluate candidate solutions
     update_model_weights(model, np.asarray(individual))
 
@@ -115,7 +115,7 @@ def ga_fitness(model, individual, data):
     return fitness
 
 
-def ga_setup(individual_population_size=33):
+def ga_setup(model, data):
     # Set up the genetic algorithm to evolve the RNN parameters
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", list, fitness=creator.FitnessMax)
@@ -126,16 +126,31 @@ def ga_setup(individual_population_size=33):
                      tools.initRepeat,
                      creator.Individual,
                      toolbox.attr_float,
-                     n=individual_population_size)
+                     n=model.count_params())  # total #params of CNN
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+    def ga_fitness(individual):
+        # The GA will update the RNN parameters to evaluate candidate solutions
+        update_model_weights(model, np.asarray(individual))
+
+        # Calculate the output feature vectors
+        feature_vectors = calculate_model_output(model, data)
+
+        # Check their fitness
+        fitness = calculate_fitness(feature_vectors)
+
+        return fitness
 
     toolbox.register("evaluate", ga_fitness)
     toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.5, indpb=0.10)
+    toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.5,
+                     indpb=0.10)
 
-    # Use tournament selection: choose a subset consisting of k members of that
+    # Use tournament selection: choose a subset consisting of
+    # k members of that
     # population, and from that subset, choose the best individual
-    toolbox.register("select", tools.selTournament, tournsize=10)  # optimize
+    toolbox.register("select", tools.selTournament,
+                     tournsize=10)  # optimize
     # this hyperparameter
 
     return toolbox

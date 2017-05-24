@@ -450,19 +450,19 @@ def ga_run(toolbox, num_gen=10, n=100, mutpb=0.8, cxpb=0.5):
     #                                stats=stats,
     #                                halloffame=hof,
     #                                verbose=True)
-    pop, log = algorithms.eaSimpleModified(pop,
-                                           toolbox,
-                                           cxpb=cxpb,
-                                           mutpb=mutpb,
-                                           ngen=num_gen,
-                                           stats=stats,
-                                           halloffame=hof,
-                                           verbose=True)
+    pop, log = eaSimpleModified(pop,
+                                toolbox,
+                                cxpb=cxpb,
+                                mutpb=mutpb,
+                                ngen=num_gen,
+                                stats=stats,
+                                halloffame=hof,
+                                verbose=True)
 
     return pop, log, hof, history
 
 
-def ga_train(model, data, output_dir='./tmp'):
+def ga_train(model, data, toolbox, output_dir='./tmp'):
     try:
         NUM_GENERATIONS = 100
         POPULATION_SIZE = 96
@@ -473,6 +473,7 @@ def ga_train(model, data, output_dir='./tmp'):
 
         for mutation_prob in MUTATION_PROBS:
             pop, log, hof, history, best_per_gen = ga_run(
+                toolbox,
                 num_gen=NUM_GENERATIONS,
                 n=POPULATION_SIZE,
                 cxpb=CROSSOVER_PROB,
@@ -508,7 +509,6 @@ def ga_train(model, data, output_dir='./tmp'):
             #                              .replace('.', '_'),
             #                              gen))
 
-
         # or that
         # Plot the results
         plt.plot(fitness_maxs)  # , '.')
@@ -538,9 +538,10 @@ def ga_train(model, data, output_dir='./tmp'):
 def calculate_model_output(model, input, multiple=False):
     output = model.predict(input)
     if multiple:
-        output = output.reshape(output.shape[0], output.shape[1])
+        output = output.reshape(-1, np.prod(output.shape[1:]))
     else:
-        output = output.reshape(output.shape[1])
+        # output = output.reshape(output.shape[1])
+        output = output.reshape(output.shape[-1])
 
     normalized_output = normalize(output)
 
