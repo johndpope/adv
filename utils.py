@@ -389,6 +389,12 @@ def eaSimpleModified(population, toolbox, cxpb, mutpb, ngen, stats=None,
     for gen in xrange(1, ngen + 1):
         # Select the next generation individuals
         offspring = toolbox.select(population, len(population))
+        # to create a copy of the selected individuals or clone
+        # offspring = [toolbox.clone(ind) for ind in offspring]
+        # offspring = map(toolbox.clone, offspring)
+        # select and clone individuals in one line
+        # offspring = map(toolbox.clone, toolbox.select(population,
+        #                                               len(population)))
 
     #     # Apply crossover and mutation on the offspring
     #     for child1, child2 in zip(offspring[::2], offspring[1::2]):
@@ -402,7 +408,7 @@ def eaSimpleModified(population, toolbox, cxpb, mutpb, ngen, stats=None,
     #             toolbox.mutate(mutant)
     #             del mutant.fitness.values
 
-        # Vary the pool of individuals
+        # Vary the pool of individuals/mutate and crossover
         offspring = algorithms.varAnd(offspring, toolbox, cxpb, mutpb)
 
         # Evaluate the individuals with an invalid fitness
