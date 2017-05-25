@@ -541,7 +541,7 @@ def calculate_model_output(model, input, multiple=False):
         output = output.reshape(-1, np.prod(output.shape[1:]))
     else:
         # output = output.reshape(output.shape[1])
-        output = output.reshape(output.shape[-1])
+        output = output
 
     normalized_output = normalize(output)
 
