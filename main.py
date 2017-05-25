@@ -37,9 +37,8 @@ def get_args():
     parser.add_argument("-a", "--attack", type=str, default="fgsm",
                         help="Choose the method of attack, "
                         "1.)fgsm, 2.)jsma")
-    parser.add_argument("dataset", type=str, default="mnist",
-                        help="Choose the dataset to be used for "
-                        "the training and the attacks")
+    parser.add_argument("-ds", "--dataset", type=str, required=True,
+                        help="mnist | cifar10 | voc2012")
     parser.add_argument("-c", "--nb_classes", type=int, default=10,
                         help="Choose the number of classes in your"
                         "dataset")
@@ -77,6 +76,8 @@ if __name__ == "__main__":
     K.set_learning_phase(0)  # without this causes error during learning
     sess = setup_config()
     args = get_args()
+    print("args = {}".format(args))
+    import pdb; pdb.set_trace() ## DEBUG ##
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
 
     # Define TF model graph

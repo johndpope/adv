@@ -1,3 +1,5 @@
+# coding: utf-8
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -117,9 +119,19 @@ def ga_fitness(individual, model, data):
 
 def ga_setup(model, data):
     # Set up the genetic algorithm to evolve the RNN parameters
+    # creates a FitnessMin class for a minimization problem
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+    # craetes an Individual class that is derived from a list with a
+    # fitness attribute set to the created fitness class
     creator.create("Individual", list, fitness=creator.FitnessMax)
 
+    # Once the types are created you need to fill them with sometimes
+    # random values, sometime guessed ones. DEAP provides an easy mechanism
+    # to do that. The Toolbox is a container for tools of all sorts
+    # including initializers that can do what is needed of them.
+    # The following takes on the last lines of code to create the initializers
+    # for individuals containing random floating point numbers and for a
+    # population that contains them.
     toolbox = base.Toolbox()
     toolbox.register("attr_float", np.random.uniform, -1.5, 1.5)
     toolbox.register("individual",
@@ -141,6 +153,10 @@ def ga_setup(model, data):
 
         return fitness
 
+    # Operators are just like initializers, except that some are already
+    # implemented in the tools module. Once you’ve chosen the perfect ones,
+    # simply register them in the toolbox. In addition you must create your
+    # evaluation function.
     toolbox.register("evaluate", ga_fitness)
     toolbox.register("mate", tools.cxTwoPoint)
     toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1.5,
@@ -150,7 +166,6 @@ def ga_setup(model, data):
     # k members of that
     # population, and from that subset, choose the best individual
     toolbox.register("select", tools.selTournament,
-                     tournsize=10)  # optimize
-    # this hyperparameter
+                     tournsize=10)  # optimize this hyperparameter
 
     return toolbox
