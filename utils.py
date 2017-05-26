@@ -15,6 +15,7 @@ import cv2
 # import multiprocessing as mp
 import itertools
 import scipy
+import networkx
 from operator import attrgetter
 from cleverhans.utils import pair_visual
 from grad_cam import run_gradcam
@@ -437,6 +438,18 @@ def eaSimpleModified(population, toolbox, cxpb, mutpb, ngen, stats=None,
     return population, logbook, best
 
 
+def ga_plot_genealogy(history, hof, toolbox):
+    h = history.getGenealogy(hof[0], max_depth=5)
+    graph = networkx.DiGraph(h)
+    graph = graph.reverse()
+    colors = [toolbox.evaluate(history.genealogy_history[i])[0] for i in graph]
+    pos = networkx.graphviz_layout(graph, prog="dot")
+    networkx.draw(graph, pos, node_color=colors)
+    cb = plt.colorbat()
+    cb.set_label("Error")
+    plt.show()
+
+
 def ga_run(toolbox, num_gen=10, n=100, mutpb=0.8, cxpb=0.5):
     """
     Runs multiple episodes, evolving the model parameters using a GA
@@ -453,7 +466,7 @@ def ga_run(toolbox, num_gen=10, n=100, mutpb=0.8, cxpb=0.5):
     pop = toolbox.population(n=n)
     history.update(pop)
 
-    hof = tools.HallOfFame(1)
+    hof = tools.HallOfFame(maxsize=1)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register("avg", np.mean)
     stats.register("std", np.std)
@@ -480,7 +493,7 @@ def ga_run(toolbox, num_gen=10, n=100, mutpb=0.8, cxpb=0.5):
     return pop, log, hof, history
 
 
-def ga_train(model, data, toolbox, output_dir='./tmp'):
+def ga_train(model, data, toolbox, genealogy=False, output_dir='./tmp'):
     try:
         NUM_GENERATIONS = 100
         POPULATION_SIZE = 96
@@ -550,7 +563,9 @@ def ga_train(model, data, toolbox, output_dir='./tmp'):
         plt.show()
 
     finally:
-        pass
+        # pass
+        if genealogy:
+            ga_plot_genealogy(history, hof, toolbox)
 
 
 def calculate_model_output(model, input, multiple=False):
