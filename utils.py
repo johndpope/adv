@@ -410,7 +410,7 @@ def eaSimpleModified(population, toolbox, cxpb, mutpb, ngen, stats=None,
     #             del mutant.fitness.values
 
         # Vary the pool of individuals/mutate and crossover
-        offspring = algorithms.varAnd(offspring, toolbox, cxpb, mutpb)
+        # offspring = algorithms.varAnd(offspring, toolbox, cxpb, mutpb)
 
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
@@ -481,91 +481,88 @@ def ga_run(toolbox, num_gen=10, n=100, mutpb=0.8, cxpb=0.5):
     #                                stats=stats,
     #                                halloffame=hof,
     #                                verbose=True)
-    pop, log = eaSimpleModified(pop,
-                                toolbox,
-                                cxpb=cxpb,
-                                mutpb=mutpb,
-                                ngen=num_gen,
-                                stats=stats,
-                                halloffame=hof,
-                                verbose=True)
+    pop, log, best = eaSimpleModified(pop,
+                                      toolbox,
+                                      cxpb=cxpb,
+                                      mutpb=mutpb,
+                                      ngen=num_gen,
+                                      stats=stats,
+                                      halloffame=hof,
+                                      verbose=True)
 
-    return pop, log, hof, history
+    return pop, log, hof, history, best
 
 
 def ga_train(model, data, toolbox, genealogy=False, output_dir='./tmp'):
-    try:
-        NUM_GENERATIONS = 100
-        POPULATION_SIZE = 96
-        # MUTATION_PROB = 0.02
-        CROSSOVER_PROB = 0.5
+    NUM_GENERATIONS = 100
+    POPULATION_SIZE = 96
+    # MUTATION_PROB = 0.02
+    CROSSOVER_PROB = 0.5
 
-        MUTATION_PROBS = [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
+    MUTATION_PROBS = [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
 
-        for mutation_prob in MUTATION_PROBS:
-            pop, log, hof, history, best_per_gen = ga_run(
-                toolbox,
-                num_gen=NUM_GENERATIONS,
-                n=POPULATION_SIZE,
-                cxpb=CROSSOVER_PROB,
-                mutpb=mutation_prob
-            )
+    for mutation_prob in MUTATION_PROBS:
+        pop, log, hof, history, best_per_gen = ga_run(
+            toolbox,
+            num_gen=NUM_GENERATIONS,
+            n=POPULATION_SIZE,
+            cxpb=CROSSOVER_PROB,
+            mutpb=mutation_prob
+        )
 
-        best = np.asarray(hof)
-        gen = log.select("gen")
-        fitness_maxs = log.select("max")
-        fitness_avgs = log.select("avg")
+    best = np.asarray(hof)
+    gen = log.select("gen")
+    fitness_maxs = log.select("max")
+    fitness_avgs = log.select("avg")
 
-        # try this
-        ga_plot_results(filename='{}train_cnn_ga_mutpb_{}.png'
-                        .format(output_dir,
-                                str(mutation_prob).replace('.', '_')),
-                        gen=gen,
-                        fitness_maxs=fitness_maxs,
-                        fitness_avgs=fitness_avgs)
+    # try this
+    ga_plot_results(filename='{}train_cnn_ga_mutpb_{}.png'
+                    .format(output_dir,
+                            str(mutation_prob).replace('.', '_')),
+                    gen=gen,
+                    fitness_maxs=fitness_maxs,
+                    fitness_avgs=fitness_avgs)
 
-        np.savetxt('{}train_cnn_ga_mutpb_{}.out'.
-                   format(output_dir,
-                          str(mutation_prob).replace('.', '_')), best)
+    np.savetxt('{}train_cnn_ga_mutpb_{}.out'.
+               format(output_dir,
+                      str(mutation_prob).replace('.', '_')), best)
 
-        # Plot the feature vectors produced by the best individual from each
-        # generation
-        for gen in xrange(len(best_per_gen)):
-            update_model_weights(model, np.asarray(best_per_gen[gen]))
-            feature_vectors = calculate_model_output(model, data)
-            # plot_feature_vectors(feature_vectors,
-            #                      filename='{}feature_vectors_{}__{}.png'
-            #                      .format(output_dir,
-            #                              str(mutation_prob)
-            #                              .replace('.', '_'),
-            #                              gen))
+    # Plot the feature vectors produced by the best individual from each
+    # generation
+    for gen in xrange(len(best_per_gen)):
+        update_model_weights(model, np.asarray(best_per_gen[gen]))
+        feature_vectors = calculate_model_output(model, data)
+        # plot_feature_vectors(feature_vectors,
+        #                      filename='{}feature_vectors_{}__{}.png'
+        #                      .format(output_dir,
+        #                              str(mutation_prob)
+        #                              .replace('.', '_'),
+        #                              gen))
 
-        # or that
-        # Plot the results
-        plt.plot(fitness_maxs)  # , '.')
-        plt.plot(fitness_avgs)  # , '.')
-        plt.legend(['maximum', 'average'], loc=4)
-        plt.xlabel('Episode')
-        plt.ylabel('Fitness')
+    # # or that
+    # # Plot the results
+    # plt.plot(fitness_maxs)  # , '.')
+    # plt.plot(fitness_avgs)  # , '.')
+    # plt.legend(['maximum', 'average'], loc=4)
+    # plt.xlabel('Episode')
+    # plt.ylabel('Fitness')
 
-        # Save the results to disk
-        np.savetxt('weights.out', best)
-        np.savetxt('fitness_avgs.out', fitness_avgs)
-        np.savetxt('fitness_maxs.out', fitness_maxs)
+    # # Save the results to disk
+    # np.savetxt('weights.out', best)
+    # np.savetxt('fitness_avgs.out', fitness_avgs)
+    # np.savetxt('fitness_maxs.out', fitness_maxs)
 
-        individuals = []
-        for i in history.genealogy_history.items():
-            individuals.append(i[1])
-        inp = np.array(individuals)
-        np.savetxt('history.out', inp)
+    # individuals = []
+    # for i in history.genealogy_history.items():
+    #     individuals.append(i[1])
+    # inp = np.array(individuals)
+    # np.savetxt('history.out', inp)
 
-        plt.savefig('learning_history.png')
-        plt.show()
+    # plt.savefig('learning_history.png')
+    # plt.show()
 
-    finally:
-        # pass
-        if genealogy:
-            ga_plot_genealogy(history, hof, toolbox)
+    if genealogy:
+        ga_plot_genealogy(history, hof, toolbox)
 
 
 def calculate_model_output(model, input, multiple=False):
