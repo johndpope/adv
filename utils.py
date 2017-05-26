@@ -438,8 +438,8 @@ def eaSimpleModified(population, toolbox, cxpb, mutpb, ngen, stats=None,
     return population, logbook, best
 
 
-def ga_plot_genealogy(history, hof, toolbox):
-    h = history.getGenealogy(hof[0], max_depth=5)
+def ga_plot_genealogy(history, hof, toolbox, max_depth=5):
+    h = history.getGenealogy(hof[0], max_depth=max_depth)
     graph = networkx.DiGraph(h)
     graph = graph.reverse()
     colors = [toolbox.evaluate(history.genealogy_history[i])[0] for i in graph]
