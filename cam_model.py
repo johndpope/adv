@@ -4,11 +4,11 @@ import tensorflow as tf
 from keras import backend as K
 from keras.datasets import mnist
 from keras.utils import np_utils
-from keras.models import Model, load_model
+from keras.models import Model
 from keras.layers import Conv2D, Dropout, Flatten, Dense, Input
-from vis.utils import utils
-from vis.visualization import visualize_cam, visualize_activation, get_num_filters
-from scipy.misc import imsave, imread, imresize
+# from vis.utils import utils
+# from vis.visualization import visualize_cam, visualize_activation, get_num_filters
+# from scipy.misc import imsave, imread, imresize
 from config import ga_setup
 from utils import ga_train
 
@@ -56,9 +56,9 @@ if __name__ == "__main__":
     #           verbose=1)
     # model.save('mnist_model.hdf5')
     # plot original image
-    from filter_vis import vis_filter
-    vis_filter(model, 'conv2d_3', img_width=224, img_height=224,
-               nb_filters=100, nb_iter=100)
+    # from filter_vis import vis_filter
+    # vis_filter(model, 'conv2d_3', img_width=224, img_height=224,
+    #            nb_filters=100, nb_iter=100)
     import pdb
     pdb.set_trace()
     img_idx = np.random.randint(0, len(trX))

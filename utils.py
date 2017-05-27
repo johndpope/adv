@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import numpy as np
 from keras import backend as K
 from keras.layers import Lambda
@@ -178,9 +180,11 @@ def global_average_pooling_shape(input_shape):
 
 
 def global_avg_pooling_layer(model):
-    model.add(Lambda(global_average_pooling,
-                     output_shape=global_average_pooling_shape))
-
+    model.add(Lambda(
+        global_average_pooling,
+        output_shape=global_average_pooling_shape
+        )
+    )
     return model
 
 
@@ -387,7 +391,7 @@ def eaSimpleModified(population, toolbox, cxpb, mutpb, ngen, stats=None,
     best.append(best_ind)
 
     # Begin the generational process
-    for gen in xrange(1, ngen + 1):
+    for gen in range(1, ngen + 1):
         # Select the next generation individuals
         offspring = toolbox.select(population, len(population))
         # to create a copy of the selected individuals or clone
@@ -410,7 +414,7 @@ def eaSimpleModified(population, toolbox, cxpb, mutpb, ngen, stats=None,
     #             del mutant.fitness.values
 
         # Vary the pool of individuals/mutate and crossover
-        # offspring = algorithms.varAnd(offspring, toolbox, cxpb, mutpb)
+        offspring = algorithms.varAnd(offspring, toolbox, cxpb, mutpb)
 
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]

@@ -13,7 +13,8 @@ from keras.utils.np_utils import to_categorical
 from keras.datasets import cifar10, mnist
 from sklearn.model_selection import train_test_split
 from deap import base, creator, tools
-from utils import calculate_fitness, update_model_weights, calculate_model_output
+from utils import calculate_fitness, update_model_weights
+from utils import calculate_model_output
 
 
 def setup_config():
@@ -151,7 +152,7 @@ def ga_setup(model, data):
         # Check their fitness
         fitness = calculate_fitness(feature_vectors)
 
-        return fitness
+        return fitness,
 
     # Operators are just like initializers, except that some are already
     # implemented in the tools module. Once you’ve chosen the perfect ones,
