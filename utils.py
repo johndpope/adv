@@ -309,7 +309,7 @@ def rank_features(X, y):
     model.fit(X, y)
     print(model.feature_importances_[
         np.where(model.feature_importances_ > 0)])
-    plt.figure(figsize=(50, 20))
+    plt.figure(figsize=(50, 50))
     plot_importance(model)
     plt.show()
     # make predictions for test data and evaluate
@@ -691,3 +691,98 @@ def mse(imgA, imgB):
 
 def ssim(imgA, imgB):
     return compare_ssim(imgA, imgB, multichannel=True)
+
+
+def plot_feature_ranking(X, ranking):
+    pass
+
+
+def feature_selection(X, y, mode='univariate', model='regression'):
+    """
+    X: 2-D array of data
+    y: 1-D array of labels
+    mode: univariate | rfe | model_based | ranking
+    """
+    if mode == "univariate":
+        # univariate feature selection
+        # chi2, f_classif, mutual_info_classif
+        # from sklearn.feature_selection import chi2, f_classif, mutual_info_classif
+        # X_new = SelectFromModel(chi2, 'median').fit_transform(X, y)
+        X_new = SelectFromModel()
+
+    if mode == "rfe":
+        from sklearn.feature_selection import RFE
+        from sklearn.linear_model import LogisticRegression, LassoCV
+        # create the model and select 3 attributes
+        if model == 'regression':
+            clf = LogisticRegression()
+        else:
+            clf = LassoCV()
+        rfe = RFE(clf, 10)
+        rfe = rfe.fit(X, y)
+        # summarize selection of attributes
+        print("Support {}".format(rfe.support_.shape))
+        print("Ranking {}".format(rfe.ranking_))
+        return rfe
+
+    if mode == "ranking":
+        # feature ranking
+        from sklearn.feature_selection import RFECV
+        from sklearn.svm import SVR
+        clf = SVR(kernel="linear")
+        selector = RFECV(clf, step=1, cv=5)
+        selector = selector.fit(X, y)
+        print("features support {}".format(selector.support_))
+        print("features ranking {}".format(selector.ranking_))
+
+    if mode == "model_based":
+        # Tree-based feature selection
+        from sklearn.ensemble import ExtraTreesClassifier
+        from sklearn.feature_selection import SelectFromModel
+        # fit an Extra Trees model to the data
+        clf = ExtraTreesClassifier()
+        clf.fit(X, y)
+        # display the relative importance of each attribute
+        print(clf.feature_importances_)
+        model = SelectFromModel(clf, prefit=True)
+        X_new = model.transform(X)
+        print(X_new.shape)
+        # clf = Pipeline([
+        #     ('feature_selection', SelectFromModel(LinearSVC(penalty="l1"))),
+        #     ('classification', RandomForestClassifier())
+        #    ])
+        # clf.fit(X, y)
+
+        # Mean decrease impurity
+        from sklearn.ensemble import RandomForestClassifier
+        # Load boston housing dataset as an example
+        rf = RandomForestClassifier()
+        rf.fit(X, y)
+        print "Features sorted by their score:"
+        print sorted(map(lambda x: round(x, 4),
+                         rf.feature_importances_),
+                     reverse=True)
+
+        # Mean decrease accuracy
+        from sklearn.model_selection import ShuffleSplit
+        from sklearn.metrics import r2_score
+        from collections import defaultdict
+
+        rf = RandomForestClassifier()
+        scores = defaultdict(list)
+
+        # crossvalidate the scores on a number of different random splits of
+        # the data
+        for tr_idx, te_idx in ShuffleSplit(len(X), 100, .3):
+            trX, teX = X[tr_idx], X[te_idx]
+            trY, teY = y[tr_idx], y[te_idx]
+            rf.fit(trX, trY)
+            acc = r2_score(teY, rf.predict(teX))
+            for i in xrange(X.shape[1]):
+                X_t = teX.copy()
+                np.random.shuffle(X_t[:, i])
+                shuff_acc = r2_score(teY, rf.predict(X_t))
+                scores[i].append((acc - shuff_acc)/acc)
+        print "Features sorted by their score:"
+        print sorted([(round(np.mean(score), 4), feat) for
+                      feat, score in scores.items()], reverse=True)
