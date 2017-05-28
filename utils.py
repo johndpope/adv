@@ -706,9 +706,30 @@ def feature_selection(X, y, mode='univariate', model='regression'):
     if mode == "univariate":
         # univariate feature selection
         # chi2, f_classif, mutual_info_classif
-        # from sklearn.feature_selection import chi2, f_classif, mutual_info_classif
-        # X_new = SelectFromModel(chi2, 'median').fit_transform(X, y)
-        X_new = SelectFromModel()
+        from sklearn.feature_selection import chi2, f_regression
+        from sklearn.feature_selection import mutual_info_regression
+        from sklearn.feature_selection import SelectFromModel
+        # chi2_test, chi2_pval = chi2(X, y)
+        # print("chi2 test {}".format(scores.shape))
+        f_test, _ = f_classif(X, y)
+        f_test = np.nan_to_num(f_test)
+        f_test /= np.max(f_test)
+
+        mi = mutual_info_classif(X, y)
+        # mi = np.where(mi != np.nan)
+        mi /= np.max(mi)
+
+        plt.figure(figsize=(15, 5))
+        for i in xrange(3):
+            plt.subplot(1, 3, i + 1)
+            plt.scatter(X[:, i], y)
+            plt.xlabel("$x_{}$".format(i + 1), fontsize=14)
+            if i == 0:
+                plt.ylabel("$y$", fontsize=14)
+                plt.title("F-test={:.2f}, MI={:.2f}"
+                          .format(f_test[i], mi[i]),
+                          fontsize=16)
+                plt.show()
 
     if mode == "rfe":
         from sklearn.feature_selection import RFE
@@ -743,7 +764,7 @@ def feature_selection(X, y, mode='univariate', model='regression'):
         clf = ExtraTreesClassifier()
         clf.fit(X, y)
         # display the relative importance of each attribute
-        print(clf.feature_importances_)
+        # print(clf.feature_importances_)
         model = SelectFromModel(clf, prefit=True)
         X_new = model.transform(X)
         print(X_new.shape)
@@ -759,9 +780,9 @@ def feature_selection(X, y, mode='univariate', model='regression'):
         rf = RandomForestClassifier()
         rf.fit(X, y)
         print "Features sorted by their score:"
-        print sorted(map(lambda x: round(x, 4),
-                         rf.feature_importances_),
-                     reverse=True)
+        features1 = sorted(map(lambda x: round(x, 4),
+                               rf.feature_importances_),
+                           reverse=True)
 
         # Mean decrease accuracy
         from sklearn.model_selection import ShuffleSplit
@@ -773,7 +794,8 @@ def feature_selection(X, y, mode='univariate', model='regression'):
 
         # crossvalidate the scores on a number of different random splits of
         # the data
-        for tr_idx, te_idx in ShuffleSplit(len(X), 100, .3):
+        for tr_idx, te_idx in ShuffleSplit(n_splits=100, test_size=0.3,
+                                           random_state=2017).split(X):
             trX, teX = X[tr_idx], X[te_idx]
             trY, teY = y[tr_idx], y[te_idx]
             rf.fit(trX, trY)
@@ -784,5 +806,7 @@ def feature_selection(X, y, mode='univariate', model='regression'):
                 shuff_acc = r2_score(teY, rf.predict(X_t))
                 scores[i].append((acc - shuff_acc)/acc)
         print "Features sorted by their score:"
-        print sorted([(round(np.mean(score), 4), feat) for
-                      feat, score in scores.items()], reverse=True)
+        features2 = sorted([(round(np.mean(score), 4), feat) for
+                            feat, score in scores.items()], reverse=True)
+
+        return features1, features2
