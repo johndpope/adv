@@ -1,17 +1,19 @@
 from __future__ import print_function
 import numpy as np
 from keras.models import Sequential, Model
-from keras.utils.vis_utils import plot_model
+# from keras.utils.vis_utils import plot_model
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import GlobalAveragePooling2D, BatchNormalization
 from keras.layers import MaxPooling2D, Input, Lambda, Conv2D
 from keras.layers import LSTM, TimeDistributed, merge, SimpleRNN
 from keras.optimizers import RMSprop, Adam
 from keras.regularizers import l2
+from keras import initializers
 # from keras.initializations import normal, identity
 # from keras.initializers import normal
 from keras import backend as K
 from square_layer import SquareMulLayer
+from vae_loss import CustomVariationalLayer
 
 np.random.seed(2017)  # for reproducibility
 
@@ -111,11 +113,7 @@ def siamese(X_train, X_test, y_train, y_test, input_dim=784):
     rms = RMSprop()
     model.compile(loss=contrastive_loss, optimizer=rms)
 
-    return model
-    # model.fit([tr_pairs[:, 0], tr_pairs[:, 1]], tr_y,
-    #          validation_data=([te_pairs[:, 0], te_pairs[:, 1]], te_y),
-    #          batch_size=128,
-    #          nb_epoch=nb_epoch)
+    return model, tr_pairs, tr_y, te_pairs, te_y
 
     # compute final accuracy on training and test sets
     # pred = model.predict([tr_pairs[:, 0], tr_pairs[:, 1]])
@@ -241,9 +239,10 @@ def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
 
     # Encodes columns of encoded rows.
     encoded_columns = LSTM(col_hidden)(encoded_rows)
+    encoded_cols = LSTM(256)(encoded_columns)
 
     # Final predictions and model.
-    prediction = Dense(nb_classes, activation='softmax')(encoded_columns)
+    prediction = Dense(nb_classes, activation='softmax')(encoded_cols)
     model = Model(input=x, output=prediction)
     model.compile(loss='categorical_crossentropy',
                   optimizer='rmsprop',
@@ -256,14 +255,15 @@ def irnn(data_shape=(None, 784, 1), nb_classes=10,
          learning_rate=1e-6, hidden_units=100):
     # clip_norm = 1.0
     model = Sequential()
-    model.add(SimpleRNN(output_dim=hidden_units,
-                        init=lambda shape,
-                        name: normal(shape, scale=0.001, name=name),
-                        inner_init=lambda shape,
-                        name: identity(shape, scale=1.0, name=name),
+    model.add(SimpleRNN(hidden_units,
+                        kernel_initializer=initializers.RandomNormal(sttdev=0.001),
+                        recurrent_initializer=initializers.Identity(gain=1.0),
                         activation='relu',
                         input_shape=data_shape[1:]))
-    model.add(SimpleRNN(output_dim=hidden_units, activation='relu'))
+    model.add(SimpleRNN(256,
+                        kernel_initializer=initializers.RandomNormal(sttdev=0.001),
+                        recurrent_initializer=initializers.Identity(gain=1.0),
+                        activation='relu'))
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
     rmsprop = RMSprop(lr=learning_rate)
@@ -882,7 +882,8 @@ def resnet(repetations=3, net_type='resnet', shape=(28, 28, 1)):
     block3 = _residual_block(block_fn, nb_filters=64, repetations=repetations,
                              net_type=net_type)(block2)
 
-    post_block_norm = BatchNormalization(axis=3)(block3)
+    block3_dropout = Dropout(0.25)(block3)
+    post_block_norm = BatchNormalization(axis=3)(block3_dropout)
     post_blob_relu = Activation("relu")(post_block_norm)
 
     # Classifier block
@@ -897,3 +898,29 @@ def resnet(repetations=3, net_type='resnet', shape=(28, 28, 1)):
 
     # return model, model_name
     return model
+
+
+def variational_ae():
+    x = Input(batch_shape=(100, 784))
+    h = Dense(256, activation='relu')(x)
+    z_mean = Dense(2)(h)
+    z_log_var = Dense(2)(h)
+
+    def sampling(args):
+        z_mean, z_log_var = args
+        epsilon = K.random_normal(shape=(100, 2), mean=0.,
+                                  stddev=1.0)
+
+        return z_mean + K.exp(z_log_var / 2.) * epsilon
+    # note that "output_shape" isn't necessary with the TensorFlow backend
+    z = Lambda(sampling, output_shape=(2,))([z_mean, z_log_var])
+    # we instantiate these layers separately so as to reuse them later
+    decoder_h = Dense(256, activation='relu')
+    decoder_mean = Dense(784, activation='sigmoid')
+    h_decoded = decoder_h(z)
+    x_decoded_mean = decoder_mean(h_decoded)
+    y = CustomVariationalLayer()([x, x_decoded_mean])
+    vae = Model(x, y)
+    vae.compile(optimizer='rmsprop', loss=None)
+
+    return vae

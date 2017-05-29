@@ -78,14 +78,20 @@ def setup_data(args):
         trX, valX, trY, valY = train_test_split(trX, trY,
                                                 test_size=args.split_dataset,
                                                 random_state=2017)
-    trX = trX.reshape(-1, 28, 28, 1)
-    teX = teX.reshape(-1, 28, 28, 1)
-    valX = valX.reshape(-1, 28, 28, 1)
+    if args.dataset == "mnist" or args.dataset == "mnist_lle":
+        trX = trX.reshape(-1, 28, 28, 1)
+        teX = teX.reshape(-1, 28, 28, 1)
+        valX = valX.reshape(-1, 28, 28, 1)
+    if args.dataset == "cifar" or args.dataset == "cifar_lle":
+        trX = trX.reshape(-1, 32, 32, 3)
+        teX = teX.reshape(-1, 32, 32, 3)
+        valX = valX.reshape(-1, 32, 32, 3)
 
-    if trY.ndim < 2 and teY.ndim < 2:
-        trY = to_categorical(trY, 10)
-        teY = to_categorical(teY, 10)
-        valY = to_categorical(valY, 10)
+    if trY.ndim <= 2 and teY.ndim <= 2:
+        if trY.shape[1] < 10 and teY.shape[1] < 10:
+            trY = to_categorical(trY, 10)
+            teY = to_categorical(teY, 10)
+            valY = to_categorical(valY, 10)
 
     label_smooth = .1
     trY = trY.clip(label_smooth / 9., 1. - label_smooth)
