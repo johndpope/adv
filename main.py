@@ -13,8 +13,8 @@ from cleverhans.attacks import FastGradientMethod
 from cleverhans.utils_tf import model_train, model_eval
 
 from models import cnn_model
-# from models import mlp_lle, cnn_lle
-# from utils import rank_classifiers, rank_features
+# from models import mlp_lle, cnn_lle, resnet
+from utils import rank_classifiers, rank_features
 from config import setup_config, setup_data
 from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
 from attacks import prep_blackbox, substitute_model, train_sub
@@ -77,7 +77,6 @@ if __name__ == "__main__":
     sess = setup_config()
     args = get_args()
     print("args = {}".format(args))
-    import pdb; pdb.set_trace() ## DEBUG ##
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
 
     # Define TF model graph
