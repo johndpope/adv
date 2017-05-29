@@ -1,9 +1,10 @@
 from __future__ import print_function
 import numpy as np
 from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization
-from keras.layers import GlobalAveragePooling2D
-from keras.layers import Convolution2D, MaxPooling2D, Input, Lambda, Conv2D
+from keras.utils.vis_utils import plot_model
+from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import GlobalAveragePooling2D, BatchNormalization
+from keras.layers import MaxPooling2D, Input, Lambda, Conv2D
 from keras.layers import LSTM, TimeDistributed, merge, SimpleRNN
 from keras.optimizers import RMSprop, Adam
 from keras.regularizers import l2
@@ -20,6 +21,8 @@ def set_img_ordering(data_shape):
         input_shape = data_shape
     else:
         input_shape = data_shape
+
+    return input_shape
 
 
 def euclidean_distance(vects):
@@ -123,12 +126,12 @@ def siamese(X_train, X_test, y_train, y_test, input_dim=784):
 
 def convresblock(x, nfeats=8, ksize=3, nskipped=2):
     ''' The proposed residual block from [4]'''
-    y0 = Convolution2D(nfeats, ksize, ksize, border_mode='same')(x)
+    y0 = Conv2D(nfeats, ksize, ksize, padding='same')(x)
     y = y0
     for i in range(nskipped):
-        y = BatchNormalization(mode=0, axis=1)(y)
+        y = BatchNormalization(axis=1)(y)
         y = Activation('relu')(y)
-        y = Convolution2D(nfeats, ksize, ksize, border_mode='same')(y)
+        y = Conv2D(nfeats, ksize, ksize, padding='same')(y)
     return merge([y0, y], mode='sum')
 
 
@@ -314,12 +317,12 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
 
     # inpt = Input(shape=data_shape)
     # # x = Dropout(0.2, input_shape=input_shape)(inpt)
-    # x = Convolution2D(nb_filters, 8, 8, subsample=(2, 2),
-    #                   border_mode='same', activation='relu')(inpt)
-    # x = Convolution2D((nb_filters * 2), 6, 6, subsample=(2, 2),
-    #                   border_mode='valid', activation='relu')(x)
-    # x = Convolution2D((nb_filters * 2), 5, 5, subsample=(1, 1),
-    #                   border_mode='valid', activation='relu')(x)
+    # x = Conv2D(nb_filters, 8, 8, strides=(2, 2),
+    #                   padding='same', activation='relu')(inpt)
+    # x = Conv2D((nb_filters * 2), 6, 6, strides=(2, 2),
+    #                   padding='valid', activation='relu')(x)
+    # x = Conv2D((nb_filters * 2), 5, 5, strides=(1, 1),
+    #                   padding='valid', activation='relu')(x)
     # # x = Dropout(0.5)(x)
     # x = Flatten()(x)
     # x = Dense(nb_classes, activation='softmax')(x)
@@ -332,7 +335,7 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
                padding='same', activation='relu',
                input_shape=data_shape),
         Conv2D((nb_filters * 2), (6, 6), strides=(2, 2),
-               padding='valid', activation='relu', name='conv2d_2'),
+               padding='valid', activation='relu'),
         Conv2D((nb_filters * 2), (5, 5), strides=(1, 1),
                padding='valid', activation='relu'),
         # Dropout(0.5),
@@ -378,11 +381,11 @@ def transfer_learning(data_shape=(28, 28, 1), nb_classes=5):
 
     # define two groups of layers: feature (convolutions) and classification (dense)
     feature_layers = [
-        Convolution2D(nb_filters, kernel_size, kernel_size,
-                      border_mode='valid',
+        Conv2D(nb_filters, kernel_size, kernel_size,
+                      padding='valid',
                       input_shape=input_shape),
         Activation('relu'),
-        Convolution2D(nb_filters, kernel_size, kernel_size),
+        Conv2D(nb_filters, kernel_size, kernel_size),
         Activation('relu'),
         MaxPooling2D(pool_size=(pool_size, pool_size)),
         Dropout(0.25),
@@ -414,30 +417,30 @@ def transfer_learning(data_shape=(28, 28, 1), nb_classes=5):
 def identity_model(test=None, inpt=Input(shape=(28, 28, 1)),
                    nb_filters=64, nb_classes=10):
     #x1 = Dropout(0.2)(inpt)
-    x = Convolution2D(32, 3, 3, activation='relu')(inpt)
-    x = Convolution2D(32, 3, 3, activation='relu')(x)
+    x = Conv2D(32, 3, 3, activation='relu')(inpt)
+    x = Conv2D(32, 3, 3, activation='relu')(x)
     x = BatchNormalization(axis=3)(x)
 
     c1 = MaxPooling2D((3, 3), strides=(1, 1))(x)
-    c2 = Convolution2D(96, 3, 3, activation='relu')(x)
+    c2 = Conv2D(96, 3, 3, activation='relu')(x)
 
     m1 = merge([c1, c2], mode='concat', concat_axis=3)
     m1 = Dropout(0.3)(m1)
 
-    c1 = Convolution2D(64, 1, 1, activation='relu', border_mode='same')(m1)
-    c1 = Convolution2D(96, 3, 3, activation='relu')(c1)
+    c1 = Conv2D(64, 1, 1, activation='relu', padding='same')(m1)
+    c1 = Conv2D(96, 3, 3, activation='relu')(c1)
 
-    c2 = Convolution2D(64, 1, 1, activation='relu', border_mode='same')(m1)
-    c2 = Convolution2D(64, 7, 1, activation='relu', border_mode='same')(c2)
-    c2 = Convolution2D(64, 1, 7, activation='relu', border_mode='same')(c2)
-    c2 = Convolution2D(96, 3, 3, activation='relu', border_mode='valid')(c2)
+    c2 = Conv2D(64, 1, 1, activation='relu', padding='same')(m1)
+    c2 = Conv2D(64, 7, 1, activation='relu', padding='same')(c2)
+    c2 = Conv2D(64, 1, 7, activation='relu', padding='same')(c2)
+    c2 = Conv2D(96, 3, 3, activation='relu', padding='valid')(c2)
     c2 = BatchNormalization(axis=3)(c2)
 
     m2 = merge([c1, c2], mode='concat', concat_axis=3)
     m2 = Dropout(0.3)(m2)
 
     p1 = MaxPooling2D((3, 3), strides=(2, 2), )(m2)
-    p2 = Convolution2D(192, 3, 3, activation='relu', subsample=(2, 2))(m2)
+    p2 = Conv2D(192, 3, 3, activation='relu', strides=(2, 2))(m2)
 
     m3 = merge([p1, p2], mode='concat', concat_axis=3)
     m3 = BatchNormalization(axis=3)(m3)
@@ -454,19 +457,15 @@ def identity_model(test=None, inpt=Input(shape=(28, 28, 1)),
 
 def cifar10_cnn(X_train, nb_classes=10):
     model = Sequential([
-        Convolution2D(32, 3, 3, activation='relu', border_mode='same',
-                      input_shape=X_train.shape[1:]),
-        Convolution2D(32, 3, 3, activation='relu'),
+        Conv2D(32, (3, 3), activation='relu', padding='same',
+               input_shape=X_train.shape[1:]),
+        Conv2D(32, (3, 3), activation='relu'),
         MaxPooling2D(pool_size=(2, 2)),
         Dropout(0.25),
-
-        Convolution2D(64, 3, 3, border_mode='same'),
-        Activation('relu'),
-        Convolution2D(64, 3, 3),
-        Activation('relu'),
+        Conv2D(64, (3, 3), padding='same', activation='relu'),
+        Conv2D(64, (3, 3), activation='relu'),
         MaxPooling2D(pool_size=(2, 2)),
         Dropout(0.25),
-
         Flatten(),
         Dense(512, activation='relu'),
         Dropout(0.5),
@@ -492,16 +491,16 @@ def build_generator(latent_size):
 
     # upsample to (..., 14, 14)
     cnn.add(UpSampling2D(size=(2, 2)))
-    cnn.add(Convolution2D(256, 5, 5, border_mode='same',
+    cnn.add(Conv2D(256, 5, 5, padding='same',
                           activation='relu', init='glorot_normal'))
 
     # upsample to (..., 28, 28)
     cnn.add(UpSampling2D(size=(2, 2)))
-    cnn.add(Convolution2D(128, 5, 5, border_mode='same',
+    cnn.add(Conv2D(128, 5, 5, padding='same',
                           activation='relu', init='glorot_normal'))
 
     # take a channel axis reduction
-    cnn.add(Convolution2D(1, 2, 2, border_mode='same',
+    cnn.add(Conv2D(1, 2, 2, padding='same',
                           activation='tanh', init='glorot_normal'))
 
     # this is the z space commonly refered to in GAN papers
@@ -527,20 +526,20 @@ def build_discriminator():
     # the reference paper
     cnn = Sequential()
 
-    cnn.add(Convolution2D(32, 3, 3, border_mode='same', subsample=(2, 2),
+    cnn.add(Conv2D(32, 3, 3, padding='same', strides=(2, 2),
                           input_shape=(1, 28, 28)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
-    cnn.add(Convolution2D(64, 3, 3, border_mode='same', subsample=(1, 1)))
+    cnn.add(Conv2D(64, 3, 3, padding='same', strides=(1, 1)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
-    cnn.add(Convolution2D(128, 3, 3, border_mode='same', subsample=(2, 2)))
+    cnn.add(Conv2D(128, 3, 3, padding='same', strides=(2, 2)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
-    cnn.add(Convolution2D(256, 3, 3, border_mode='same', subsample=(1, 1)))
+    cnn.add(Conv2D(256, 3, 3, padding='same', strides=(1, 1)))
     cnn.add(LeakyReLU())
     cnn.add(Dropout(0.3))
 
@@ -740,10 +739,10 @@ def mlp_lle(nb_classes=10):
 
 def cnn_lle(data_shape, nb_classes=10):
     model = Sequential([
-        Convolution2D(32, 3, 3, activation='relu', input_shape=data_shape),
-        Convolution2D(64, 3, 3, activation='relu'),
-        Convolution2D(128, 3, 3, activation='relu'),
-        Convolution2D(256, 3, 3, activation='relu'),
+        Conv2D(32, 3, 3, activation='relu', input_shape=data_shape),
+        Conv2D(64, 3, 3, activation='relu'),
+        Conv2D(128, 3, 3, activation='relu'),
+        Conv2D(256, 3, 3, activation='relu'),
         MaxPooling2D(pool_size=(2, 2)),
         Flatten(),
         Dense(324, activation='relu'),
@@ -762,21 +761,14 @@ def cnn_lle(data_shape, nb_classes=10):
     return model
 
 
-from keras.layers.pooling import GlobalAveragePooling2D
-from keras.layers.normalization import BatchNormalization
-from keras.utils.visualize_util import plot
-from keras.regularizers import l2
-from keras import backend as K
-from square_layer import SquareMulLayer
-
-
 # Helper to build a conv -> BN -> relu block
-def _conv_bn_relu(nb_filter, nb_row, nb_col, subsample=(1, 1)):
+def _conv_bn_relu(nb_filter, nb_row, nb_col, strides=(1, 1)):
     def f(input):
-        conv = Convolution2D(nb_filter=nb_filter, nb_row=nb_row, nb_col=nb_col,
-                             W_regularizer=l2(1e-4), subsample=subsample,
-                             init="he_normal", border_mode="same")(input)
-        norm = BatchNormalization(mode=2, axis=1)(conv)
+        conv = Conv2D(nb_filter, (nb_row, nb_col),
+                      kernel_regularizer=l2(1e-4), strides=strides,
+                      kernel_initializer="he_normal",
+                      padding="same")(input)
+        norm = BatchNormalization(axis=3)(conv)
         return Activation("relu")(norm)
 
     return f
@@ -784,13 +776,14 @@ def _conv_bn_relu(nb_filter, nb_row, nb_col, subsample=(1, 1)):
 
 # Helper to build a BN -> relu -> conv block
 # This is an improved scheme proposed in http://arxiv.org/pdf/1603.05027v2.pdf
-def _bn_relu_conv(nb_filter, nb_row, nb_col, subsample=(1, 1)):
+def _bn_relu_conv(nb_filter, nb_row, nb_col, strides=(1, 1)):
     def f(input):
-        norm = BatchNormalization(mode=2, axis=1)(input)
+        norm = BatchNormalization(axis=3)(input)
         activation = Activation("relu")(norm)
-        return Convolution2D(nb_filter=nb_filter, nb_row=nb_row, nb_col=nb_col,
-                             W_regularizer=l2(1e-4), subsample=subsample,
-                             init="he_normal", border_mode="same")(activation)
+        return Conv2D(nb_filter, (nb_row, nb_col),
+                      kernel_regularizer=l2(1e-4), strides=strides,
+                      kernel_initializer="he_normal",
+                      padding="same")(activation)
 
     return f
 
@@ -798,10 +791,10 @@ def _bn_relu_conv(nb_filter, nb_row, nb_col, subsample=(1, 1)):
 # Bottleneck architecture for > 34 layer resnet.
 # Follows improved proposed scheme in http://arxiv.org/pdf/1603.05027v2.pdf
 # Returns a final conv layer of nb_filters * 4
-def _bottleneck(nb_filters, net_type, init_subsample=(1, 1)):
+def _bottleneck(nb_filters, net_type, init_strides=(1, 1)):
     def f(input):
         conv_1_1 = _bn_relu_conv(nb_filters, 1, 1,
-                                 subsample=init_subsample)(input)
+                                 strides=init_strides)(input)
         conv_3_3 = _bn_relu_conv(nb_filters, 3, 3)(conv_1_1)
         residual = _bn_relu_conv(nb_filters * 4, 1, 1)(conv_3_3)
         return _shortcut(input, residual, net_type)
@@ -812,10 +805,10 @@ def _bottleneck(nb_filters, net_type, init_subsample=(1, 1)):
 # Basic 3 X 3 convolution blocks.
 # Use for resnet with layers <= 34
 # Follows improved proposed scheme in http://arxiv.org/pdf/1603.05027v2.pdf
-def _basic_block(nb_filters, net_type, init_subsample=(1, 1)):
+def _basic_block(nb_filters, net_type, init_strides=(1, 1)):
     def f(input):
         conv1 = _bn_relu_conv(nb_filters, 3, 3,
-                              subsample=init_subsample)(input)
+                              strides=init_strides)(input)
         residual = _bn_relu_conv(nb_filters, 3, 3)(conv1)
         return _shortcut(input, residual, net_type)
 
@@ -830,18 +823,20 @@ def _shortcut(input, residual, net_type):
     # Expand channels of shortcut to match residual.
     # Stride appropriately to match residual (width, height)
     # Should be int if network architecture is correctly configured.
-    stride_width = input._keras_shape[2] / residual._keras_shape[2]
-    stride_height = input._keras_shape[3] / residual._keras_shape[3]
-    equal_channels = residual._keras_shape[1] == input._keras_shape[1]
+    stride_width = input._keras_shape[1] / residual._keras_shape[1]
+    stride_height = input._keras_shape[2] / residual._keras_shape[2]
+    equal_channels = residual._keras_shape[3] == input._keras_shape[3]
 
     shortcut = input
     # 1 X 1 conv if shape is different. Else identity.
-    # assert stride_width == 1 and stride_height == 1 and equal_channels, 'only identity is supported'
+    # assert stride_width == 1 and stride_height == 1 and equal_channels,
+    # 'only identity is supported'
     if stride_width > 1 or stride_height > 1 or not equal_channels:
-        shortcut = Convolution2D(nb_filter=residual._keras_shape[1],
-                                 nb_row=1, nb_col=1,
-                                 subsample=(stride_width, stride_height),
-                                 init="he_normal", border_mode="valid")(input)
+        shortcut = Conv2D(residual._keras_shape[3],
+                          (1, 1),
+                          strides=(stride_width, stride_height),
+                          kernel_initializer="he_normal",
+                          padding="valid")(input)
 
     if net_type == 'resnet':
         return merge([shortcut, residual], mode="sum")
@@ -858,10 +853,10 @@ def _residual_block(block_function, nb_filters, repetations, net_type,
                     is_first_layer=False):
     def f(input):
         for i in range(repetations):
-            init_subsample = (1, 1)
+            init_strides = (1, 1)
             if i == 0 and not is_first_layer:
-                init_subsample = (2, 2)
-            input = block_function(nb_filters, net_type, init_subsample)(input)
+                init_strides = (2, 2)
+            input = block_function(nb_filters, net_type, init_strides)(input)
         return input
 
     return f
@@ -887,16 +882,18 @@ def resnet(repetations=3, net_type='resnet', shape=(28, 28, 1)):
     block3 = _residual_block(block_fn, nb_filters=64, repetations=repetations,
                              net_type=net_type)(block2)
 
-    post_block_norm = BatchNormalization(mode=2, axis=1)(block3)
+    post_block_norm = BatchNormalization(axis=3)(block3)
     post_blob_relu = Activation("relu")(post_block_norm)
 
     # Classifier block
     pool2 = GlobalAveragePooling2D()(post_blob_relu)
-    dense = Dense(output_dim=10, init="he_normal", W_regularizer=l2(1e-4),
+    dense = Dense(10, kernel_initializer="he_normal",
+                  kernel_regularizer=l2(1e-4),
                   activation="softmax")(pool2)
 
-    model = Model(input=input, output=dense)
-    model.compile(loss="categorical_crossentropy", optimizer="sgd",
+    model = Model(inputs=input, outputs=dense)
+    model.compile(loss="categorical_crossentropy", optimizer="adam",
                   metrics=['accuracy'])
 
-    return model, model_name
+    # return model, model_name
+    return model

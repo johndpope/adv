@@ -103,13 +103,13 @@ def main():
 
     nn_param_choices = {
         'nb_neurons': [64, 128, 256, 512, 768, 1024],
-        'nb_layers': [1, 2, 3, 4],
+        'nb_layers': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         'activation': ['relu', 'elu', 'tanh', 'sigmoid'],
         'optimizer': ['rmsprop', 'adam', 'sgd', 'adagrad',
                       'adadelta', 'adamax', 'nadam'],
     }
 
-    logging.info("***Evolving %d generations with population %d***" %
+    logging.info("***Evolving %d generations with population %d***".format
                  (generations, population))
 
     generate(generations, population, nn_param_choices, dataset)

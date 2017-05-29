@@ -11,6 +11,8 @@ from keras.layers import Conv2D, Dropout, Flatten, Dense, Input
 # from scipy.misc import imsave, imread, imresize
 from config import ga_setup
 from utils import ga_train
+from models import resnet
+from keras.utils.vis_utils import plot_model
 
 
 def create_model(data_shape=(28, 28, 1)):
@@ -48,8 +50,13 @@ if __name__ == "__main__":
     teY = np_utils.to_categorical(teY, 10)
     # trY = np.load('./voc2012/trY.npy')
     model = create_model()
+    # model, name = resnet()
     # model = load_model('mnist_model.hdf5')
     model.summary()
+    plot_model(model, to_file='cnn_model.png', show_shapes=True,
+               show_layer_names=True)
+    import pdb
+    pdb.set_trace()
     toolbox = ga_setup(model, trX)
     ga_train(model, trX, toolbox)
     # model.fit(trX, trY, validation_split=0.21, batch_size=128, epochs=2,

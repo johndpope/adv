@@ -59,7 +59,8 @@ def get_mnist():
     y_train = to_categorical(y_train, nb_classes)
     y_test = to_categorical(y_test, nb_classes)
 
-    return (nb_classes, batch_size, input_shape, x_train, x_test, y_train, y_test)
+    return (nb_classes, batch_size, input_shape, x_train, x_test, y_train,
+            y_test)
 
 
 def compile_model(network, nb_classes, input_shape):
@@ -74,6 +75,7 @@ def compile_model(network, nb_classes, input_shape):
     """
     # Get our network parameters.
     nb_layers = network['nb_layers']
+    # nb_conv_layers = network['nb_conv_layers']
     nb_neurons = network['nb_neurons']
     activation = network['activation']
     optimizer = network['optimizer']
@@ -81,7 +83,7 @@ def compile_model(network, nb_classes, input_shape):
     model = Sequential()
 
     # Add each layer.
-    for i in range(nb_layers):
+    for i in xrange(nb_layers):
 
         # Need input shape for first layer.
         if i == 0:
@@ -117,6 +119,7 @@ def train_and_score(network, dataset):
             x_test, y_train, y_test = get_mnist()
 
     model = compile_model(network, nb_classes, input_shape)
+    model.summary()
 
     model.fit(x_train, y_train,
               batch_size=batch_size,

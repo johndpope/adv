@@ -6,13 +6,14 @@ from __future__ import unicode_literals
 import numpy as np
 import argparse
 import keras.backend as K
-# from keras.utils.visualize_util import plot
+from keras.utils.vis_utils import plot_model
 from cleverhans.attacks import FastGradientMethod
 # from cleverhans.utils_tf import model_argmax
 # from cleverhans.utils import other_classes
 from cleverhans.utils_tf import model_train, model_eval
+from cleverhans.utils import grid_visual
 
-from models import cnn_model
+# from models import cnn_model
 # from models import mlp_lle, cnn_lle, resnet
 from utils import rank_classifiers, rank_features
 from config import setup_config, setup_data
@@ -80,7 +81,8 @@ if __name__ == "__main__":
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
 
     # Define TF model graph
-    model = eval(args.model + '()')
+    import models
+    model = getattr(models, args.model)()
     model.summary()
     predictions = model(x)
     print("Defined TensorFlow graph.")
@@ -94,6 +96,7 @@ if __name__ == "__main__":
     # train on dataset
     model.fit(trX, trY, nb_epoch=args.epochs, batch_size=args.batch_size,
               validation_data=(valX, valY), verbose=1)
+    model.save(args.model + args.dataset + '.hdf5')
 
     # Evaluate accuracy of the MNIST model on legitimate test
     # examples
@@ -179,8 +182,9 @@ if __name__ == "__main__":
                                        teX, teY, eval_params)
 
     if args.plot_arch is True:
-        plot(model, to_file=eval(args.model + '.png'), show_shapes=True,
-             show_layer_names=True)
+        plot_model(model, to_file=eval(args.model + '.png'),
+                   show_shapes=True,
+                   show_layer_names=True)
 
     if args.rank_features is True:
         rank_features(np.vstack((trX, valX)).reshape(-1, 784),
@@ -199,6 +203,7 @@ if __name__ == "__main__":
         grid_visual(np.hstack((labels, data)))
 
     if args.rank_classifiers is True:
+        from models import cnn_model, mlp, hierarchical, irnn, identity_model
         cnn = cnn_model()
         per = mlp()
         hr = hierarchical()
