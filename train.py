@@ -1,4 +1,5 @@
 """
+B
 Utility used by the Network class to actually train.
 
 Based on:
@@ -7,7 +8,7 @@ Based on:
 """
 from keras.datasets import mnist, cifar10
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.layers import Dense, Dropout, Conv2D, Flatten
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import EarlyStopping
 
@@ -87,14 +88,19 @@ def compile_model(network, nb_classes, input_shape):
 
         # Need input shape for first layer.
         if i == 0:
-            model.add(Dense(nb_neurons, activation=activation,
-                            input_shape=input_shape))
+            # model.add(Dense(nb_neurons, activation=activation,
+            #                 input_shape=input_shape))
+            model.add(Conv2D(nb_neurons, (nb_layers, nb_layers),
+                             activation=activation, input_shape=input_shape))
         else:
-            model.add(Dense(nb_neurons, activation=activation))
+            # model.add(Dense(nb_neurons, activation=activation))
+            model.add(Conv2D(nb_neurons, (nb_layers, nb_layers),
+                             activation=activation))
 
         model.add(Dropout(0.2))  # hard-coded dropout
 
     # Output layer.
+    model.add(Flatten())
     model.add(Dense(nb_classes, activation='softmax'))
 
     model.compile(loss='categorical_crossentropy', optimizer=optimizer,
@@ -114,17 +120,21 @@ def train_and_score(network, dataset):
     if dataset == 'cifar10':
         nb_classes, batch_size, input_shape, x_train, \
             x_test, y_train, y_test = get_cifar10()
+        x_train = x_train.reshape(-1, 32, 32, 3)
+        x_test = x_test.reshape(-1, 32, 32, 3)
     elif dataset == 'mnist':
         nb_classes, batch_size, input_shape, x_train, \
             x_test, y_train, y_test = get_mnist()
+        x_train = x_train.reshape(-1, 32, 32, 3)
+        x_test = x_test.reshape(-1, 32, 32, 3)
 
-    model = compile_model(network, nb_classes, input_shape)
+    model = compile_model(network, nb_classes, x_train.shape[1:])
     model.summary()
 
     model.fit(x_train, y_train,
               batch_size=batch_size,
-              nb_epoch=10000,  # using early stopping, so no real limit
-              verbose=0,
+              epochs=10000,  # using early stopping, so no real limit
+              verbose=1,
               validation_data=(x_test, y_test),
               callbacks=[early_stopper])
 

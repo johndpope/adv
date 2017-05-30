@@ -4,7 +4,7 @@ from keras.models import Sequential, Model
 # from keras.utils.vis_utils import plot_model
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import GlobalAveragePooling2D, BatchNormalization
-from keras.layers import MaxPooling2D, Input, Lambda, Conv2D
+from keras.layers import MaxPooling2D, Input, Lambda, Conv2D, UpSampling2D
 from keras.layers import LSTM, TimeDistributed, merge, SimpleRNN
 from keras.optimizers import RMSprop, Adam
 from keras.regularizers import l2
@@ -129,7 +129,7 @@ def convresblock(x, nfeats=8, ksize=3, nskipped=2):
     for i in range(nskipped):
         y = BatchNormalization(axis=1)(y)
         y = Activation('relu')(y)
-        y = Conv2D(nfeats, ksize, ksize, padding='same')(y)
+        y = Conv2D(nfeats, (ksize, ksize), padding='same')(y)
     return merge([y0, y], mode='sum')
 
 
@@ -924,3 +924,30 @@ def variational_ae():
     vae.compile(optimizer='rmsprop', loss=None)
 
     return vae
+
+
+def conv_ae(data_shape):
+    input_img = Input(shape=data_shape)
+
+    x = Conv2D(16, (3, 3), activation='relu', padding='same')(input_img)
+    x = MaxPooling2D((2, 2), padding='same')(x)
+    x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
+    x = MaxPooling2D((2, 2), padding='same')(x)
+    x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
+    encoded = MaxPooling2D((2, 2), padding='same')(x)
+
+    # at this point the representation is (4, 4, 8) i.e. 128-dimensional
+
+    x = Conv2D(32, (3, 3), activation='relu', padding='same')(encoded)
+    x = UpSampling2D((2, 2))(x)
+    x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
+    x = UpSampling2D((2, 2))(x)
+    x = Conv2D(16, (3, 3), activation='relu')(x)
+    x = UpSampling2D((2, 2))(x)
+    decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
+
+    autoencoder = Model(input_img, decoded)
+    autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy',
+                        metrics=['accuracy'])
+
+    return autoencoder

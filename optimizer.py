@@ -45,7 +45,7 @@ class Optimizer():
 
         """
         pop = []
-        for _ in range(0, count):
+        for _ in xrange(0, count):
             # Create a random network.
             network = Network(self.nn_param_choices)
             network.create_random()
@@ -85,7 +85,7 @@ class Optimizer():
 
         """
         children = []
-        for _ in range(2):
+        for _ in xrange(2):
 
             child = {}
 

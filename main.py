@@ -102,7 +102,7 @@ if __name__ == "__main__":
     # for siamese
     model.fit(tr_pairs, trY, epochs=args.epochs, batch_size=args.batch_size,
               validation_data=(valX, valY), verbose=1)
-    model.save(args.model + args.dataset + '.hdf5')
+    model.save(args.model + '_' + args.dataset + '.hdf5')
 
     # Evaluate accuracy of the MNIST model on legitimate test
     # examples
