@@ -33,22 +33,26 @@ class Optimizer():
         self.retain = retain
         self.nn_param_choices = nn_param_choices
 
-    def create_population(self, count):
+    def create_population(self, count, dataset):
         """Create a population of random networks.
 
         Args:
             count (int): Number of networks to generate, aka the
                 size of the population
+            dataset (string): Name of dataset used during training
 
         Returns:
             (list): Population of network objects
 
         """
         pop = []
-        for _ in xrange(0, count):
+        for counter in xrange(0, count):
             # Create a random network.
             network = Network(self.nn_param_choices)
             network.create_random()
+
+            # check if nework combinamtion of layers and filters is valid
+            self.validate_output_check(network, dataset, counter)
 
             # Add the network to our population.
             pop.append(network)
@@ -184,3 +188,25 @@ class Optimizer():
         parents.extend(children)
 
         return parents
+
+    def validate_output_check(self, network_obj, dataset, counter):
+        padding = 0
+        stride = 1
+        if dataset == "cifar10":
+            img_width = 32
+        if dataset == "mnist":
+            img_width = 28
+        for layer in xrange(network_obj.network['nb_layers']):
+            img_width = int(
+                (
+                    (
+                        (img_width - network_obj.network['nb_filters'] + 2. * padding)
+                        / stride
+                    ) + 1
+                ) / 2.
+            )
+        if img_width < 1:
+            network_obj.create_random()
+            # self.validate_output_check(network, dataset)
+        print("Network: {}, img_width: {}, params: {}"
+              .format(counter, img_width, network_obj.network))

@@ -17,6 +17,7 @@ class Network():
             nn_param_choices (dict): Parameters for the network, includes:
                 nb_neurons (list): [64, 128, 256]
                 nb_layers (list): [1, 2, 3, 4]
+                nb_filters (list): [1, 2, 3, 4]
                 activation (list): ['relu', 'elu']
                 optimizer (list): ['rmsprop', 'adam']
         """

@@ -1,5 +1,4 @@
 """
-B
 Utility used by the Network class to actually train.
 
 Based on:
@@ -8,7 +7,7 @@ Based on:
 """
 from keras.datasets import mnist, cifar10
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Conv2D, Flatten
+from keras.layers import Dense, Dropout, Conv2D, Flatten, MaxPooling2D
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import EarlyStopping
 
@@ -76,8 +75,8 @@ def compile_model(network, nb_classes, input_shape):
     """
     # Get our network parameters.
     nb_layers = network['nb_layers']
-    # nb_conv_layers = network['nb_conv_layers']
     nb_neurons = network['nb_neurons']
+    nb_filters = network['nb_filters']
     activation = network['activation']
     optimizer = network['optimizer']
 
@@ -90,14 +89,16 @@ def compile_model(network, nb_classes, input_shape):
         if i == 0:
             # model.add(Dense(nb_neurons, activation=activation,
             #                 input_shape=input_shape))
-            model.add(Conv2D(nb_neurons, (nb_layers, nb_layers),
+            model.add(Conv2D(nb_neurons, (nb_filters, nb_filters),
                              activation=activation, input_shape=input_shape))
+            model.add(MaxPooling2D(pool_size=(2, 2)))
         else:
             # model.add(Dense(nb_neurons, activation=activation))
-            model.add(Conv2D(nb_neurons, (nb_layers, nb_layers),
+            model.add(Conv2D(nb_neurons, (nb_filters, nb_filters),
                              activation=activation))
+            model.add(MaxPooling2D(pool_size=(2, 2)))
 
-        model.add(Dropout(0.2))  # hard-coded dropout
+    model.add(Dropout(0.25))  # hard-coded dropout
 
     # Output layer.
     model.add(Flatten())
@@ -131,6 +132,7 @@ def train_and_score(network, dataset):
     model = compile_model(network, nb_classes, x_train.shape[1:])
     model.summary()
 
+    print("Network: {}".format(network))
     model.fit(x_train, y_train,
               batch_size=batch_size,
               epochs=10000,  # using early stopping, so no real limit

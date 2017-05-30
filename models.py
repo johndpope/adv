@@ -5,7 +5,7 @@ from keras.models import Sequential, Model
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import GlobalAveragePooling2D, BatchNormalization
 from keras.layers import MaxPooling2D, Input, Lambda, Conv2D, UpSampling2D
-from keras.layers import LSTM, TimeDistributed, merge, SimpleRNN
+from keras.layers import LSTM, TimeDistributed, merge, SimpleRNN, ELU
 from keras.optimizers import RMSprop, Adam
 from keras.regularizers import l2
 from keras import initializers
@@ -122,15 +122,19 @@ def siamese(X_train, X_test, y_train, y_test, input_dim=784):
     # te_acc = compute_accuracy(pred, te_y)
 
 
-def convresblock(x, nfeats=8, ksize=3, nskipped=2):
+def convresblock(x, nfeats=8, ksize=3, nskipped=2, elu=True):
     ''' The proposed residual block from [4]'''
     y0 = Conv2D(nfeats, ksize, ksize, padding='same')(x)
     y = y0
     for i in range(nskipped):
-        y = BatchNormalization(axis=1)(y)
-        y = Activation('relu')(y)
-        y = Conv2D(nfeats, (ksize, ksize), padding='same')(y)
+        if elu:
+            y = ELU()(y)
+        else:
+            y = BatchNormalization(axis=1)(y)
+            y = Activation('relu')(y)
+            y = Conv2D(nfeats, (ksize, ksize), padding='same')(y)
     return merge([y0, y], mode='sum')
+    # return layers.add([y0, y])
 
 
 def getwhere(x):
@@ -148,7 +152,7 @@ def preprocess_swwae(X_train, X_test):
                            'because it requires taking the gradient '
                            'of a gradient, which isn\'t '
                            'supported for all TF ops.')
-    K.set_image_dim_ordering('th')
+    K.set_image_data_format('channels_first')
 
     # The size of the kernel used for the MaxPooling2D
     pool_size = 2
@@ -158,8 +162,6 @@ def preprocess_swwae(X_train, X_test):
     pool_sizes = np.array([1, 1, 1, 1, 1]) * pool_size
     # The convolution kernel size
     ksize = 3
-    # Number of epochs to train for
-    nb_epoch = 5
 
     if pool_size == 2:
         # if using a 5 layer net of pool_size = 2
@@ -181,9 +183,12 @@ def preprocess_swwae(X_train, X_test):
     # convolutional however)
     input_shape = X_train.shape[1:]
 
+    return input_shape, nfeats, nlayers, pool_sizes, ksize
+
 
 def swwae(X_train, X_test):
-    preprocess_swwae(X_train, X_test)
+    input_shape, nfeats, nlayers, pool_sizes, ksize = preprocess_swwae(X_train,
+                                                                       X_test)
     # The final list of the size of axis=1 for all layers, including input
     nfeats_all = [input_shape[0]] + nfeats
 
@@ -201,10 +206,11 @@ def swwae(X_train, X_test):
 
     # Now build the decoder, and use the stored "where" masks to places
     # the features
-    for i in range(nlayers):
+    for i in xrange(nlayers):
         ind = nlayers - 1 - i
         y = UpSampling2D(size=(pool_sizes[ind], pool_sizes[ind]))(y)
         y = merge([y, wheres[ind]], mode='mul')
+        # y = layers.multiply([y, wheres[ind]])
         y = convresblock(y, nfeats=nfeats_all[ind], ksize=ksize)
 
     # Use hard_simgoid to clip range of reconstruction
@@ -866,6 +872,7 @@ def _residual_block(block_function, nb_filters, repetations, net_type,
 def resnet(repetations=3, net_type='resnet', shape=(28, 28, 1)):
     """net_type: plain, resnet, squared_resnet."""
     model_name = '%s_repetation_%d' % (net_type, repetations)
+    print(model_name)
 
     input = Input(shape=shape)
     conv1 = _conv_bn_relu(nb_filter=16, nb_row=3, nb_col=3)(input)
@@ -910,8 +917,8 @@ def variational_ae():
         z_mean, z_log_var = args
         epsilon = K.random_normal(shape=(100, 2), mean=0.,
                                   stddev=1.0)
-
         return z_mean + K.exp(z_log_var / 2.) * epsilon
+
     # note that "output_shape" isn't necessary with the TensorFlow backend
     z = Lambda(sampling, output_shape=(2,))([z_mean, z_log_var])
     # we instantiate these layers separately so as to reuse them later

@@ -87,7 +87,7 @@ def main():
     nn_param_choices = {
         'nb_neurons': [64, 128, 256, 512, 768, 1024],
         'nb_layers': [1, 2, 3, 4],
-        'activation': ['relu', 'elu', 'tanh', 'sigmoid'],
+        'activation': ['relu', 'elu'],
         'optimizer': ['rmsprop', 'adam', 'sgd', 'adagrad',
                       'adadelta', 'adamax', 'nadam'],
     }
