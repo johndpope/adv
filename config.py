@@ -88,10 +88,9 @@ def setup_data(args):
         valX = valX.reshape(-1, 32, 32, 3)
 
     if trY.ndim <= 2 and teY.ndim <= 2:
-        if trY.shape[1] < 10 and teY.shape[1] < 10:
-            trY = to_categorical(trY, 10)
-            teY = to_categorical(teY, 10)
-            valY = to_categorical(valY, 10)
+        trY = to_categorical(trY, 10)
+        teY = to_categorical(teY, 10)
+        valY = to_categorical(valY, 10)
 
     label_smooth = .1
     trY = trY.clip(label_smooth / 9., 1. - label_smooth)

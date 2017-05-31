@@ -952,9 +952,11 @@ def conv_ae(data_shape):
     x = Conv2D(16, (3, 3), activation='relu')(x)
     x = UpSampling2D((2, 2))(x)
     decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
+    decoded = Flatten()(decoded)
+    decoded = Dense(10, activation='softmax')(decoded)
 
     autoencoder = Model(input_img, decoded)
-    autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy',
+    autoencoder.compile(optimizer='adadelta', loss='categorical_crossentropy',
                         metrics=['accuracy'])
 
     return autoencoder

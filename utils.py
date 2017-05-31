@@ -267,33 +267,33 @@ def get_output_layer(model, layer_name):
 
 def visualize_class_activation_map(model, img_path, output_path,
                                    layer_name="conv5_3", target_class=1):
-        # model = load_model(model_path)
-        original_img = cv2.imread(img_path, 1)
-        width, height, _ = original_img.shape
+    # model = load_model(model_path)
+    original_img = cv2.imread(img_path, 1)
+    width, height, _ = original_img.shape
 
-        # Reshape to the network input shape (3, w, h).
-        img = np.array([np.transpose(np.float32(original_img), (2, 0, 1))])
+    # Reshape to the network input shape (3, w, h).
+    img = np.array([np.transpose(np.float32(original_img), (2, 0, 1))])
 
-        # Get the 512 input weights to the softmax.
-        class_weights = model.layers[-1].get_weights()[0]
-        final_conv_layer = model.get_output_layer(model, layer_name)
-        get_output = K.function([model.layers[0].input],
-                                [final_conv_layer.output,
-                                 model.layers[-1].output])
-        [conv_outputs, predictions] = get_output([img])
-        conv_outputs = conv_outputs[0, :, :, :]
+    # Get the 512 input weights to the softmax.
+    class_weights = model.layers[-1].get_weights()[0]
+    final_conv_layer = model.get_output_layer(model, layer_name)
+    get_output = K.function([model.layers[0].input],
+                            [final_conv_layer.output,
+                             model.layers[-1].output])
+    [conv_outputs, predictions] = get_output([img])
+    conv_outputs = conv_outputs[0, :, :, :]
 
-        # Create the class activation map.
-        cam = np.zeros(dtype=np.float32, shape=conv_outputs.shape[1:3])
-        for i, w in enumerate(class_weights[:, target_class]):
-                cam += w * conv_outputs[i, :, :]
-        print("predictions", predictions)
-        cam /= np.max(cam)
-        cam = cv2.resize(cam, (height, width))
-        heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
-        heatmap[np.where(cam < 0.2)] = 0
-        img = heatmap * 0.5 + original_img
-        cv2.imwrite(output_path, img)
+    # Create the class activation map.
+    cam = np.zeros(dtype=np.float32, shape=conv_outputs.shape[1:3])
+    for i, w in enumerate(class_weights[:, target_class]):
+            cam += w * conv_outputs[i, :, :]
+    print("predictions", predictions)
+    cam /= np.max(cam)
+    cam = cv2.resize(cam, (height, width))
+    heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
+    heatmap[np.where(cam < 0.2)] = 0
+    img = heatmap * 0.5 + original_img
+    cv2.imwrite(output_path, img)
 
 
 def rank_features(X, y):
@@ -810,3 +810,18 @@ def feature_selection(X, y, mode='univariate', model='regression'):
                             feat, score in scores.items()], reverse=True)
 
         return features1, features2
+
+
+def vis_cam(model_name, img, layer_name='conv2d_2'):
+    from vis.visualization import visualize_cam
+    from keras.models import load_model
+    model = load_model('./models/' + model_name)
+    layer_idx = [idx for idx, layer in enumerate(model.layers)
+                 if layer.name == layer_name][0]
+    pred_class = np.argmax(model.predict(np.expand_dims(img, axis=0)))
+    print("image shape {}, predicted_class = {}".format(img.shape,
+                                                        pred_class))
+    heatmap = visualize_cam(model, layer_idx, [pred_class], img)
+    plt.imshow(heatmap)
+    plt.show()
+    plt.imsave(heatmap)

@@ -84,8 +84,9 @@ if __name__ == "__main__":
     import models
     model = getattr(models, args.model)(trX.shape[1:])
     # for siamese
-    model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
-                                                    args.model)(trX.shape[1:])
+    # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
+    #                                                 args.model)(trX.shape[1:])
+    model = getattr(models, args.model)(trX.shape[1:])
     model.summary()
     predictions = model(x)
     print("Defined TensorFlow graph.")
@@ -99,10 +100,10 @@ if __name__ == "__main__":
     # train on dataset
     model.fit(trX, trY, epochs=args.epochs, batch_size=args.batch_size,
               validation_data=(valX, valY), verbose=1)
-    # for siamese
-    model.fit(tr_pairs, trY, epochs=args.epochs, batch_size=args.batch_size,
-              validation_data=(valX, valY), verbose=1)
-    model.save(args.model + '_' + args.dataset + '.hdf5')
+    # # for siamese
+    # model.fit(tr_pairs, trY, epochs=args.epochs, batch_size=args.batch_size,
+    #           validation_data=(valX, valY), verbose=1)
+    model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
 
     # Evaluate accuracy of the MNIST model on legitimate test
     # examples
@@ -158,8 +159,9 @@ if __name__ == "__main__":
         print("Test accuracy on adversarial examples: {}"
               .format(adv_scores[1]))
 
+        import pdb; pdb.set_trace() ## DEBUG ##
         from vis.visualization import visualize_cam
-        layer_name = 'conv2d_2'
+        layer_name = 'conv2d_14'
         layer_idx = [idx for idx, layer in enumerate(model.layers)
                      if layer.name == layer_name][0]
         imgs = trX[np.argmax(trY, axis=1) == 5]
@@ -168,7 +170,7 @@ if __name__ == "__main__":
         print("image shape {}, predicted_class = {}".format(img.shape,
                                                             pred_class))
         heatmap = visualize_cam(model, layer_idx, [pred_class], img)
-        find_top_predictions(model, args.model, 'conv2d_2', teX, teY,
+        find_top_predictions(model, args.model, 'conv2d_14', teX, teY,
                              X_test_adv, 5)
         print("Repeating the process, using aversarial training")
         # Redefine TF model graph
