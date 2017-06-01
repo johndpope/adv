@@ -99,9 +99,11 @@ if __name__ == "__main__":
         import models
         model = getattr(models, args.model)(trX.shape[1:])
         if args.model == "mlp_lle":
+            import tensorflow as tf
             trX = trX.reshape(-1, 784)
             teX = teX.reshape(-1, 784)
             valX = valX.reshape(-1, 784)
+            x = tf.placeholder(tf.float32, shape=(None, 784))
 
         # for siamese
         # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,

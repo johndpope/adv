@@ -744,7 +744,6 @@ def mlp_lle(nb_classes=10):
 
 
 def cnn_lle(data_shape, nb_classes=10):
-    import pdb; pdb.set_trace() ## DEBUG ##
     model = Sequential([
         Conv2D(32, 3, activation='relu', input_shape=data_shape),
         Conv2D(64, 3, activation='relu'),

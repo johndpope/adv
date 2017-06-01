@@ -59,7 +59,7 @@ def setup_data(args):
         trY = np.load('test/trY_lle_all_mnist.npy')
         teX = np.load('test/teX_lle_all_mnist.npy')
         teY = np.load('test/teY_lle_all_mnist.npy')
-        x = tf.placeholder(tf.float32, shape=(None, 784))
+        x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
     elif args.dataset == "cifar_lle":
         trX = np.load('data/cifar10/trX_lle_10n_3072c.npy')
         trY = np.load('data/cifar10/trY_lle_10n_3072c.npy')
