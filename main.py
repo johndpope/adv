@@ -49,25 +49,28 @@ def get_args():
     parser.add_argument("-rf", "--rank_features", type=bool, default=False,
                         help="Rank feature importance using xgboost")
     parser.add_argument("-p", "--plot_arch", type=bool, default=False,
-                        help="Rank classifiers based on their accuracy")
+                        help="Plot the network architecture.")
     parser.add_argument("-s", "--split_dataset", type=float, default=0.21,
-                        help="Rank classifiers based on their accuracy")
-    parser.add_argument("-eps", "--eps", type=float, default=0.3,
+                        help="Split the datasset. Keep % for validation.")
+    parser.add_argument("-eps", "--epsilon", type=float, default=0.3,
                         help="Epsilon variable for adversarial distortion")
     parser.add_argument("-pv", "--pair_visual", type=int, default=5,
                         help="Plot normal and distorted image from "
                              "particular target classs")
     parser.add_argument("-gv", "--grid_visual", type=bool, default=False,
-                        help="Plot normal and distorted image from "
-                             "particular target classs")
+                        help="Plot a grid of all the images with distorted"
+                             " in the diagonal")
     parser.add_argument("-ho", "--holdout", type=int, default=100,
                         help="Test set holdout for adversary.")
-    parser.add_argument("-da", "--data_aug", type=int, default=6,
-                        help="Training epochs for each substitute.")
+    parser.add_argument("-da", "--data_aug", type=int, default=False,
+                        help="Wether to use augmentation during trainig"
+                        " or not")
     parser.add_argument("-l", "--lmbda", type=float, default=0.2,
                         help="Lambda in https://arxiv.org/abs/1602.02697.")
     parser.add_argument("-nas", "--nb_attack_samples", type=int, default=10,
-                        help="Nb ot test set examples to attack")
+                        help="Nb of test set examples to attack")
+    parser.add_argument("-pr", "--pretrained", type=bool, default=False,
+                        help="Wether to load a pretrained model or not")
     args = parser.parse_args()
 
     return args
@@ -92,13 +95,15 @@ if __name__ == "__main__":
     print("teY = {}".format(teY.shape))
 
     # Define TF model graph
-    # import models
-    # model = getattr(models, args.model)()
-    # for siamese
-    # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
-    #                                                 args.model)(trX.shape[1:])
-    from keras.models import load_model
-    model = load_model('./models/mlp_lle.hdf5')
+    if args.pretrained:
+        from keras.models import load_model
+        model = load_model('./models/' + args.model + '.hdf5')
+    else:
+        import models
+        model = getattr(models, args.model)()
+        # for siamese
+        # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
+        #                                                 args.model)(trX.shape[1:])
     model.summary()
     predictions = model(x)
     print("Defined TensorFlow graph.")
@@ -110,9 +115,10 @@ if __name__ == "__main__":
                    'keras_learning_phase': 0}
 
     # train on dataset
-    # model.fit(trX, trY, epochs=args.epochs,
-    #           batch_size=args.batch_size,
-    #           validation_data=(valX, valY), verbose=1)
+    if not args.pretrained:
+        model.fit(trX, trY, epochs=args.epochs,
+                  batch_size=args.batch_size,
+                  validation_data=(valX, valY), verbose=1)
     # # for siamese
     # model.fit(tr_pairs, trY, epochs=args.epochs, batch_size=args.batch_size,
     #           validation_data=(valX, valY), verbose=1)
@@ -189,7 +195,7 @@ if __name__ == "__main__":
         model_2 = eval(args.model + '()')
         predictions_2 = model_2(x)
         fgsm = FastGradientMethod(model_2, sess=sess)
-        adv_x_2 = fgsm.generate(x, **{'eps': args.eps})
+        adv_x_2 = fgsm.generate(x, **{'eps': args.epsilon})
         predictions_2_adv = model_2(adv_x_2)
 
         # Perform adversarial training
