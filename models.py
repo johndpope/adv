@@ -744,11 +744,12 @@ def mlp_lle(nb_classes=10):
 
 
 def cnn_lle(data_shape, nb_classes=10):
+    import pdb; pdb.set_trace() ## DEBUG ##
     model = Sequential([
-        Conv2D(32, 3, 3, activation='relu', input_shape=data_shape),
-        Conv2D(64, 3, 3, activation='relu'),
-        Conv2D(128, 3, 3, activation='relu'),
-        Conv2D(256, 3, 3, activation='relu'),
+        Conv2D(32, 3, activation='relu', input_shape=data_shape),
+        Conv2D(64, 3, activation='relu'),
+        Conv2D(128, 3, activation='relu'),
+        Conv2D(256, 3, activation='relu'),
         MaxPooling2D(pool_size=(2, 2)),
         Flatten(),
         Dense(324, activation='relu'),
