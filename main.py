@@ -83,9 +83,6 @@ if __name__ == "__main__":
     args = get_args()
     print("args = {}".format(args))
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
-    trX = trX.reshape(-1, 784)
-    teX = teX.reshape(-1, 784)
-    valX = valX.reshape(-1, 784)
 
     print("trX = {}".format(trX.shape))
     print("trY = {}".format(trY.shape))
@@ -101,6 +98,11 @@ if __name__ == "__main__":
     else:
         import models
         model = getattr(models, args.model)(trX[1:])
+        if args.model == "mlp_lle":
+            trX = trX.reshape(-1, 784)
+            teX = teX.reshape(-1, 784)
+            valX = valX.reshape(-1, 784)
+
         # for siamese
         # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
         #                                                 args.model)(trX.shape[1:])
