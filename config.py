@@ -55,11 +55,11 @@ def setup_data(args):
         (trX, trY), (teX, teY) = cifar10.load_data()
         x = tf.placeholder(tf.float32, shape=(None, 32, 32, 3))
     elif args.dataset == "mnist_lle":
-        trX = np.load('data/mnist/trX_lle_10n_784c_mnist.npy')
-        trY = np.load('data/mnist/trY_lle_10n_784c_mnist.npy')
-        teX = np.load('data/mnist/teX_lle_10n_784c_mnist.npy')
-        teY = np.load('data/mnist/teY_lle_10n_784c_mnist.npy')
-        x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
+        trX = np.load('test/trX_lle_all_mnist.npy')
+        trY = np.load('test/trY_lle_all_mnist.npy')
+        teX = np.load('test/teX_lle_all_mnist.npy')
+        teY = np.load('test/teY_lle_all_mnist.npy')
+        x = tf.placeholder(tf.float32, shape=(None, 784))
     elif args.dataset == "cifar_lle":
         trX = np.load('data/cifar10/trX_lle_10n_3072c.npy')
         trY = np.load('data/cifar10/trY_lle_10n_3072c.npy')
@@ -69,8 +69,8 @@ def setup_data(args):
 
     trX = trX.astype('float32')
     teX = teX.astype('float32')
-    trX /= 255.
-    teX /= 255.
+    # trX /= 255.
+    # teX /= 255.
     trY = trY.astype('int32')
     teY = teY.astype('int32')
 

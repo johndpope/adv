@@ -706,8 +706,8 @@ def feature_selection(X, y, mode='univariate', model='regression'):
     if mode == "univariate":
         # univariate feature selection
         # chi2, f_classif, mutual_info_classif
-        from sklearn.feature_selection import chi2, f_regression
-        from sklearn.feature_selection import mutual_info_regression
+        from sklearn.feature_selection import chi2, f_classif
+        from sklearn.feature_selection import mutual_info_classif
         from sklearn.feature_selection import SelectFromModel
         # chi2_test, chi2_pval = chi2(X, y)
         # print("chi2 test {}".format(scores.shape))
@@ -812,10 +812,10 @@ def feature_selection(X, y, mode='univariate', model='regression'):
         return features1, features2
 
 
-def vis_cam(model_name, img, layer_name='conv2d_2'):
+def vis_cam(model, img, layer_name='conv2d_2'):
     from vis.visualization import visualize_cam
-    from keras.models import load_model
-    model = load_model('./models/' + model_name)
+    # from keras.models import load_model
+    # model = load_model('./models/' + model_name)
     layer_idx = [idx for idx, layer in enumerate(model.layers)
                  if layer.name == layer_name][0]
     pred_class = np.argmax(model.predict(np.expand_dims(img, axis=0)))

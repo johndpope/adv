@@ -20,6 +20,8 @@ from keras.utils import np_utils
 from deap import algorithms, base, creator, tools
 from operator import attrgetter
 from matplotlib import pyplot as plt
+import multiprocessing as mp
+from multiprocessing import cpu_count
 
 # Set the following parameters:
 OUTPUT_DIR = 'experiments/train_cnn_ga_11/'
@@ -136,6 +138,9 @@ def run(num_gen=10,
     # Decorate the variation operators
     toolbox.decorate("mate", history.decorator)
     toolbox.decorate("mutate", history.decorator)
+
+    pool = mp.Pool(processes=cpu_count)
+    toolbox.register("map", pool.map)
 
     pop = toolbox.population(n=n)
     history.update(pop)

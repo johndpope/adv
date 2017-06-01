@@ -19,7 +19,7 @@ from utils import rank_classifiers, rank_features
 from config import setup_config, setup_data
 from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
 from attacks import prep_blackbox, substitute_model, train_sub
-from utils import find_top_predictions
+from utils import find_top_predictions, vis_cam
 
 
 def get_args():
@@ -49,7 +49,7 @@ def get_args():
                         help="Rank feature importance using xgboost")
     parser.add_argument("-p", "--plot_arch", type=bool, default=False,
                         help="Rank classifiers based on their accuracy")
-    parser.add_argument("-s", "--split_dataset", type=float, default=0.2,
+    parser.add_argument("-s", "--split_dataset", type=float, default=0.21,
                         help="Rank classifiers based on their accuracy")
     parser.add_argument("-eps", "--eps", type=float, default=0.3,
                         help="Epsilon variable for adversarial distortion")
@@ -79,14 +79,25 @@ if __name__ == "__main__":
     args = get_args()
     print("args = {}".format(args))
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
+    trX = trX.reshape(-1, 784)
+    teX = teX.reshape(-1, 784)
+    valX = valX.reshape(-1, 784)
+
+    print("trX = {}".format(trX.shape))
+    print("trY = {}".format(trY.shape))
+    print("valX = {}".format(valX.shape))
+    print("valY = {}".format(valY.shape))
+    print("teX = {}".format(teX.shape))
+    print("teY = {}".format(teY.shape))
 
     # Define TF model graph
-    import models
-    model = getattr(models, args.model)(trX.shape[1:])
+    # import models
+    # model = getattr(models, args.model)()
     # for siamese
     # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
     #                                                 args.model)(trX.shape[1:])
-    model = getattr(models, args.model)(trX.shape[1:])
+    from keras.models import load_model
+    model = load_model('./models/mlp_lle.hdf5')
     model.summary()
     predictions = model(x)
     print("Defined TensorFlow graph.")
@@ -98,12 +109,13 @@ if __name__ == "__main__":
                    'keras_learning_phase': 0}
 
     # train on dataset
-    model.fit(trX, trY, epochs=args.epochs, batch_size=args.batch_size,
-              validation_data=(valX, valY), verbose=1)
+    # model.fit(trX, trY, epochs=args.epochs,
+    #           batch_size=args.batch_size,
+    #           validation_data=(valX, valY), verbose=1)
     # # for siamese
     # model.fit(tr_pairs, trY, epochs=args.epochs, batch_size=args.batch_size,
     #           validation_data=(valX, valY), verbose=1)
-    model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
+    # model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
 
     # Evaluate accuracy of the MNIST model on legitimate test
     # examples
@@ -159,18 +171,12 @@ if __name__ == "__main__":
         print("Test accuracy on adversarial examples: {}"
               .format(adv_scores[1]))
 
-        import pdb; pdb.set_trace() ## DEBUG ##
-        from vis.visualization import visualize_cam
-        layer_name = 'conv2d_14'
-        layer_idx = [idx for idx, layer in enumerate(model.layers)
-                     if layer.name == layer_name][0]
-        imgs = trX[np.argmax(trY, axis=1) == 5]
-        img = np.expand_dims(imgs[0], axis=0)
-        pred_class = np.argmax(model.predict(np.expand_dims(imgs[0], axis=0)))
-        print("image shape {}, predicted_class = {}".format(img.shape,
-                                                            pred_class))
-        heatmap = visualize_cam(model, layer_idx, [pred_class], img)
-        find_top_predictions(model, args.model, 'conv2d_14', teX, teY,
+        layer_name = 'conv2d_13'
+        preds = np.argmax(np.flip(np.sort(model.predict(teX), axis=0), axis=0),
+                          axis=1)
+        imgs = trX[preds][:5]
+        vis_cam(model, imgs[0], layer_name)
+        find_top_predictions(model, args.model, layer_name, teX, teY,
                              X_test_adv, 5)
         print("Repeating the process, using aversarial training")
         # Redefine TF model graph

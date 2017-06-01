@@ -727,9 +727,9 @@ def acgan():
 
 def mlp_lle(nb_classes=10):
     model = Sequential([
-        Dense(200, activation='relu', input_shape=(200,)),
+        Dense(784, activation='relu', input_shape=(784,)),
         Dropout(0.5),
-        Dense(200, activation='relu'),
+        Dense(300, activation='relu'),
         Dropout(0.5),
         Dense(100, activation='relu'),
         Dropout(0.5),
@@ -908,10 +908,13 @@ def resnet(repetations=3, net_type='resnet', shape=(28, 28, 1)):
 
 
 def variational_ae():
-    x = Input(batch_shape=(100, 784))
-    h = Dense(256, activation='relu')(x)
-    z_mean = Dense(2)(h)
-    z_log_var = Dense(2)(h)
+    original_dim = 784
+    latent_dim = 2
+    intermediate_dim = 256
+    x = Input(batch_shape=(100, original_dim))
+    h = Dense(intermediate_dim, activation='relu')(x)
+    z_mean = Dense(latent_dim)(h)
+    z_log_var = Dense(latent_dim)(h)
 
     def sampling(args):
         z_mean, z_log_var = args
@@ -920,13 +923,13 @@ def variational_ae():
         return z_mean + K.exp(z_log_var / 2.) * epsilon
 
     # note that "output_shape" isn't necessary with the TensorFlow backend
-    z = Lambda(sampling, output_shape=(2,))([z_mean, z_log_var])
+    z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
     # we instantiate these layers separately so as to reuse them later
-    decoder_h = Dense(256, activation='relu')
-    decoder_mean = Dense(784, activation='sigmoid')
+    decoder_h = Dense(intermediate_dim, activation='relu')
+    decoder_mean = Dense(original_dim, activation='sigmoid')
     h_decoded = decoder_h(z)
     x_decoded_mean = decoder_mean(h_decoded)
-    y = CustomVariationalLayer()([x, x_decoded_mean])
+    y = CustomVariationalLayer(z_mean, z_log_var)([x, x_decoded_mean])
     vae = Model(x, y)
     vae.compile(optimizer='rmsprop', loss=None)
 

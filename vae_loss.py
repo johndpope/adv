@@ -10,14 +10,14 @@ class CustomVariationalLayer(Layer):
     def __init__(self, **kwargs):
         self.is_placeholder = True
         self.original_dim = 784
-        self.z_log_var = 0
-        self.z_mean = 0
+        self.z_log_var = kwargs['z_log_var']
+        self.z_mean = kwargs['z_mean']
         super(CustomVariationalLayer, self).__init__(**kwargs)
 
     def vae_loss(self, x, x_decoded_mean):
         # if vae_deconv then
-        x = K.flatten(x)
-        x_decoded_mean = K.flatten(x_decoded_mean)
+        # x = K.flatten(x)
+        # x_decoded_mean = K.flatten(x_decoded_mean)
         xent_loss = self.original_dim * metrics.binary_crossentropy(
             x, x_decoded_mean)
         kl_loss = - 0.5 * K.sum(1 + self.z_log_var - K.square(self.z_mean)
