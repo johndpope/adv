@@ -100,7 +100,7 @@ if __name__ == "__main__":
         model = load_model('./models/' + args.model + '.hdf5')
     else:
         import models
-        model = getattr(models, args.model)()
+        model = getattr(models, args.model)(trX[1:])
         # for siamese
         # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
         #                                                 args.model)(trX.shape[1:])
