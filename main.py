@@ -97,7 +97,7 @@ if __name__ == "__main__":
         model = load_model('./models/' + args.model + '.hdf5')
     else:
         import models
-        model = getattr(models, args.model)(trX[1:])
+        model = getattr(models, args.model)(trX.shape[1:])
         if args.model == "mlp_lle":
             trX = trX.reshape(-1, 784)
             teX = teX.reshape(-1, 784)
