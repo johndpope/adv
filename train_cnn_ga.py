@@ -139,8 +139,8 @@ def run(num_gen=10,
     toolbox.decorate("mate", history.decorator)
     toolbox.decorate("mutate", history.decorator)
 
-    pool = mp.Pool(processes=cpu_count)
-    toolbox.register("map", pool.map)
+    # pool = mp.Pool(processes=cpu_count())
+    # toolbox.register("map", pool.map)
 
     pop = toolbox.population(n=n)
     history.update(pop)
@@ -179,8 +179,8 @@ def plot_results(filename,
 
 
 def run_experiments(output_dir):
-    POPULATION_SIZE = 100
-    NUM_GENERATIONS = 100
+    POPULATION_SIZE = 20
+    NUM_GENERATIONS = 20
     CROSSOVER_PROB = 0.5
 
     MUTATION_PROBS = [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]

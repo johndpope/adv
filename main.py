@@ -20,6 +20,7 @@ from config import setup_config, setup_data
 from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
 from attacks import prep_blackbox, substitute_model, train_sub
 from utils import find_top_predictions, vis_cam
+from sklearn.manifold import LocallyLinearEmbedding
 
 
 def get_args():
@@ -166,7 +167,12 @@ if __name__ == "__main__":
         # X_test_adv might change to X_test as in the new cleverhans example
         # accuracy = model_eval(sess, x, y, preds_adv, X_test_adv, teY,
         #                       args=eval_params)
-        adv_scores = model.evaluate(X_test_adv, teY)
+        # Note: first pass X_test_adv through LLe and then evaluate
+        X_test_adv_lle = LocallyLinearEmbedding(n_neighbors=10,
+                                                n_components=784,
+                                                random_state=2017,
+                                                n_jobs=-1).fit_transform(X_test_adv)
+        adv_scores = model.evaluate(X_test_adv_lle, teY)
         # print("Test accuracy on adversarial examples: ".format(accuracy))
         print("Test accuracy on adversarial examples: {}"
               .format(adv_scores[1]))
