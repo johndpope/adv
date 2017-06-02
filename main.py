@@ -84,17 +84,18 @@ if __name__ == "__main__":
     print("args = {}".format(args))
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
 
-    print("trX = {}".format(trX.shape))
-    print("trY = {}".format(trY.shape))
-    print("valX = {}".format(valX.shape))
-    print("valY = {}".format(valY.shape))
-    print("teX = {}".format(teX.shape))
-    print("teY = {}".format(teY.shape))
+    # print("trX = {}".format(trX.shape))
+    # print("trY = {}".format(trY.shape))
+    # print("valX = {}".format(valX.shape))
+    # print("valY = {}".format(valY.shape))
+    # print("teX = {}".format(teX.shape))
+    # print("teY = {}".format(teY.shape))
 
     # Define TF model graph
     if args.pretrained:
         from keras.models import load_model
-        model = load_model('./models/' + args.model + '.hdf5')
+        model = load_model('./models/' + args.model + '_'
+                           + args.dataset + '.hdf5')
     else:
         import models
         model = getattr(models, args.model)(trX.shape[1:])
@@ -123,10 +124,10 @@ if __name__ == "__main__":
         model.fit(trX, trY, epochs=args.epochs,
                   batch_size=args.batch_size,
                   validation_data=(valX, valY), verbose=1)
+        model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
     # # for siamese
     # model.fit(tr_pairs, trY, epochs=args.epochs, batch_size=args.batch_size,
     #           validation_data=(valX, valY), verbose=1)
-    # model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
 
     # Evaluate accuracy of the MNIST model on legitimate test
     # examples
@@ -156,7 +157,8 @@ if __name__ == "__main__":
                                          args)
 
         # Initialize the Fast Gradient Sign Method (FGSM) attack object.
-        fgsm_par = {'eps': 0.3, 'ord': np.inf, 'clip_min': 0., 'clip_max': 1.}
+        fgsm_par = {'eps': args.epsilon, 'ord': np.inf,
+                    'clip_min': 0., 'clip_max': 1.}
         fgsm = FastGradientMethod(model_sub, sess=sess)
 
         # Craft adversarial examples using the substitute

@@ -163,7 +163,7 @@ def evaluate_adversarial(sess, x, y, predictions, predictions_adv,
 def whitebox_fgsm(sess, model, x, argues, teX, eval_params):
     # Craft adversarial examples using Fast Gradient Sign Method (FGSM)
     fgsm = FastGradientMethod(model, sess=sess)
-    fgsm_params = {'eps': argues.eps, 'keras_learning_phase': 0}
+    fgsm_params = {'eps': argues.epsilon, 'keras_learning_phase': 0}
     adv_x = fgsm.generate(x, **fgsm_params)
     preds_adv = model(adv_x)
     teX_adv, = batch_eval(sess, [x], [adv_x], [teX],

@@ -159,6 +159,36 @@ def plot_2d_embedding(X, y, X_embedded, name, min_dist=10.0):
             ax.add_artist(imagebox)
 
 
+def estimator_hyperparam_sensitivity(estimator, X, y, hyperparam="alpha"):
+    """
+    If the training score and the validation score are both low, the
+    estimator will be underfitting.
+    If the training score is high and the validation score is low, the
+    estimator is overfitting and otherwise
+    it is working very well.
+    A low training score and a high validation
+    score is usually not possible.
+    """
+    import numpy as np
+    from sklearn.model_selection import validation_curve, learning_curve
+    # from sklearn.datasets import load_iris
+    from sklearn.linear_model import Ridge
+    from sklearn.svm import SVC
+
+    np.random.seed(2017)
+    # iris = load_iris()
+    # X, y = iris.data, iris.target
+    # indices = np.arange(y.shape[0])
+    # np.random.shuffle(indices)
+    # X, y = X[indices], y[indices]
+    train_scores, valid_scores = validation_curve(Ridge(), X, y, "alpha",
+                                                  np.logspace(-7, 3, 3))
+
+    train_sizes, train_scores, valid_scores = learning_curve(
+        SVC(kernel='linear'), X, y, train_sizes=[50, 80, 110],
+        cv=5)
+
+
 def ga_plot_results(filename, gen, fitness_maxs, fitness_avgs):
     fig, ax1 = plt.subplots()
     line1 = ax1.plot(gen, fitness_maxs, "r-", label="Maximum Fitness")
