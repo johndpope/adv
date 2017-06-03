@@ -11,7 +11,7 @@ from cleverhans.attacks import FastGradientMethod
 # from cleverhans.utils_tf import model_argmax
 # from cleverhans.utils import other_classes
 from cleverhans.utils_tf import model_train, model_eval
-from cleverhans.utils import grid_visual
+from cleverhans.utils import grid_visual, pair_visual
 
 # from models import cnn_model
 # from models import mlp_lle, cnn_lle, resnet
@@ -83,13 +83,25 @@ if __name__ == "__main__":
     args = get_args()
     print("args = {}".format(args))
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
+    from utils import print_data_shapes
+    print_data_shapes(trX, trY, valX, valY, teX, teY)
 
-    # print("trX = {}".format(trX.shape))
-    # print("trY = {}".format(trY.shape))
-    # print("valX = {}".format(valX.shape))
-    # print("valY = {}".format(valY.shape))
-    # print("teX = {}".format(teX.shape))
-    # print("teY = {}".format(teY.shape))
+    if args.model == "mlp_lle":
+        import tensorflow as tf
+        trX = trX.reshape(-1, 784)
+        teX = teX.reshape(-1, 784)
+        valX = valX.reshape(-1, 784)
+        x = tf.placeholder(tf.float32, shape=(None, 784))
+
+    if args.model == "irnn":
+        import tensorflow as tf
+        trX = trX.reshape(-1, 784, 1)
+        teX = teX.reshape(-1, 784, 1)
+        valX = valX.reshape(-1, 784, 1)
+        x = tf.placeholder(tf.float32, shape=(None, 784, 1))
+        # for siamese
+        # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
+        #                                                 args.model)(trX.shape[1:])
 
     # Define TF model graph
     if args.pretrained:
@@ -99,16 +111,6 @@ if __name__ == "__main__":
     else:
         import models
         model = getattr(models, args.model)(trX.shape[1:])
-        if args.model == "mlp_lle":
-            import tensorflow as tf
-            trX = trX.reshape(-1, 784)
-            teX = teX.reshape(-1, 784)
-            valX = valX.reshape(-1, 784)
-            x = tf.placeholder(tf.float32, shape=(None, 784))
-
-        # for siamese
-        # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
-        #                                                 args.model)(trX.shape[1:])
     model.summary()
     predictions = model(x)
     print("Defined TensorFlow graph.")
@@ -180,38 +182,38 @@ if __name__ == "__main__":
         # accuracy = model_eval(sess, x, y, preds_adv, X_test_adv, teY,
         #                       args=eval_params)
         # Note: first pass X_test_adv through LLe and then evaluate
-        X_test_adv_lle = LocallyLinearEmbedding(n_neighbors=10,
-                                                n_components=784,
-                                                random_state=2017,
-                                                n_jobs=-1).fit_transform(X_test_adv)
-        adv_scores = model.evaluate(X_test_adv_lle, teY)
+        # X_test_adv_lle = LocallyLinearEmbedding(n_neighbors=10,
+        #                                         n_components=784,
+        #                                         random_state=2017,
+        #                                         n_jobs=-1).fit_transform(X_test_adv)
+        adv_scores = model.evaluate(X_test_adv, teY)
         # print("Test accuracy on adversarial examples: ".format(accuracy))
         print("Test accuracy on adversarial examples: {}"
               .format(adv_scores[1]))
 
-        layer_name = 'conv2d_13'
-        preds = np.argmax(np.flip(np.sort(model.predict(teX), axis=0), axis=0),
-                          axis=1)
-        imgs = trX[preds][:5]
-        vis_cam(model, imgs[0], layer_name)
-        find_top_predictions(model, args.model, layer_name, teX, teY,
-                             X_test_adv, 5)
-        print("Repeating the process, using aversarial training")
-        # Redefine TF model graph
-        model_2 = eval(args.model + '()')
-        predictions_2 = model_2(x)
-        fgsm = FastGradientMethod(model_2, sess=sess)
-        adv_x_2 = fgsm.generate(x, **{'eps': args.epsilon})
-        predictions_2_adv = model_2(adv_x_2)
+        # layer_name = 'conv2d_13'
+        # preds = np.argmax(np.flip(np.sort(model.predict(teX), axis=0), axis=0),
+        #                   axis=1)
+        # imgs = trX[preds][:5]
+        # vis_cam(model, imgs[0], layer_name)
+        # find_top_predictions(model, args.model, layer_name, teX, teY,
+        #                      X_test_adv, 5)
+        # print("Repeating the process, using aversarial training")
+        # # Redefine TF model graph
+        # model_2 = eval(args.model + '()')
+        # predictions_2 = model_2(x)
+        # fgsm = FastGradientMethod(model_2, sess=sess)
+        # adv_x_2 = fgsm.generate(x, **{'eps': args.epsilon})
+        # predictions_2_adv = model_2(adv_x_2)
 
-        # Perform adversarial training
-        model_train(sess, x, y, predictions_2, trX, trY,
-                    predictions_adv=predictions_2_adv,
-                    args=train_params)
+        # # Perform adversarial training
+        # model_train(sess, x, y, predictions_2, trX, trY,
+        #             predictions_adv=predictions_2_adv,
+        #             args=train_params)
 
-        adv_acc = evaluate_adversarial(sess, x, y, predictions_2,
-                                       predictions_2_adv,
-                                       teX, teY, eval_params)
+        # adv_acc = evaluate_adversarial(sess, x, y, predictions_2,
+        #                                predictions_2_adv,
+        #                                teX, teY, eval_params)
 
     if args.plot_arch is True:
         plot_model(model, to_file=eval(args.model + '.png'),
@@ -221,9 +223,11 @@ if __name__ == "__main__":
     if args.rank_features is True:
         rank_features(np.vstack((trX, valX)).reshape(-1, 784),
                       np.argmax(np.vstack((trY, valY)), axis=1))
-    # if args.pair_visual is not None:
-    #     pair_visual(teX[args.pair_visual].reshape(28, 28),
-    #                 X_test_adv[args.pair_visual].reshape(28, 28))
+    if args.pair_visual is not None:
+        pair_visual(teX[args.pair_visual].reshape(28, 28),
+                    X_test_adv[args.pair_visual].reshape(28, 28))
+        import pdb
+        pdb.set_trace()
 
     if args.grid_visual is True:
         if args.dataset == "mnist":

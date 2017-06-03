@@ -857,12 +857,39 @@ def vis_cam(model, img, layer_name='conv2d_2'):
     plt.imsave(heatmap)
 
 
-def denoising_dictionary_learning(data, patch_size=(7, 7)):
+def plot_img_diff(orig_img, distorted, title):
+    """ Helper function to display denoising """
+    plt.figure(figsize=(5, 3.3))
+    plt.subplot(1, 2, 1)
+    plt.title('Distorted Image')
+    plt.imshow(distorted, vmin=0, vmax=1, cmap=plt.cm.gray_r,
+               interpolation='nearest')
+    plt.xticks(())
+    plt.yticks(())
+    plt.subplot(1, 2, 2)
+    difference = distorted - orig_img
+
+    plt.title('Difference (norm: %.2f)' % np.sqrt(np.sum(difference ** 2)))
+    plt.imshow(difference, vmin=-0.5, vmax=0.5, cmap=plt.cm.PuOr,
+               interpolation='nearest')
+    plt.xticks(())
+    plt.yticks(())
+    plt.suptitle(title, size=16)
+    plt.subplots_adjust(0.02, 0.02, 0.98, 0.79, 0.02, 0.2)
+
+
+def denoising_dictionary_learning(img_orig, distorted, patch_size=(7, 7)):
     from sklearn.decomposition import MiniBatchDictionaryLearning
     from sklearn.feature_extraction.image import extract_patches_2d
     from sklearn.feature_extraction.image import reconstruct_from_patches_2d
 
-    data = extract_patches_2d(data, patch_size)
+    if img_orig.ndim == 3:
+        h, w, c = img_orig.shape
+    else:
+        h, w = img_orig.shape
+
+    print('Extracting reference patches... ')
+    data = extract_patches_2d(img_orig, patch_size)
     data = data.reshape(data.shape[0], -1)
     intercept = np.mean(data, axis=0)
     data -= intercept
@@ -884,11 +911,10 @@ def denoising_dictionary_learning(data, patch_size=(7, 7)):
         plt.subplots_adjust(0.08, 0.02, 0.92, 0.85, 0.08, 0.23)
 
     print('Extracting noisy patches... ')
-    # data = extract_patches_2d(distorted, patch_size)
-    # data = data.reshape(data.shape[0], -1)
-    # intercept = np.mean(data, axis=0)
-    # data -= intercept
-    # print('done in %.2fs.' % (time() - t0))
+    data = extract_patches_2d(distorted, patch_size)
+    data = data.reshape(data.shape[0], -1)
+    intercept = np.mean(data, axis=0)
+    data -= intercept
 
     transform_algorithms = [
         ('Orthogonal Matching Pursuit\n1 atom', 'omp',
@@ -899,11 +925,11 @@ def denoising_dictionary_learning(data, patch_size=(7, 7)):
          {'transform_n_nonzero_coefs': 5}),
         ('Thresholding\n alpha=0.1', 'threshold', {'transform_alpha': .1})
     ]
-
+    print("Starting reconstruction of image from noisy patches...")
     reconstructions = {}
     for title, transform_algorithm, kwargs in transform_algorithms:
         print(title + '...')
-        reconstructions[title] = face.copy()
+        reconstructions[title] = img_orig.copy()
         dico.set_params(transform_algorithm=transform_algorithm, **kwargs)
         code = dico.transform(data)
         patches = np.dot(code, V)
@@ -912,9 +938,17 @@ def denoising_dictionary_learning(data, patch_size=(7, 7)):
         patches = patches.reshape(len(data), *patch_size)
         if transform_algorithm == 'threshold':
             patches -= patches.min()
-            patches /= patches.max()
-        reconstructions[title][:, w // 2:] = reconstruct_from_patches_2d(
-        patches, (height, width // 2))
-        show_with_diff(reconstructions[title], face,
-                           title)
+            patches /= (patches.max() + 1e-5)
+        reconstructions[title] = reconstruct_from_patches_2d(
+            patches, (h, w))
+        plot_img_diff(img_orig, reconstructions[title], title)
     plt.show()
+
+
+def print_data_shapes(trX, trY, valX, valY, teX, teY):
+    print("trX = {}".format(trX.shape))
+    print("trY = {}".format(trY.shape))
+    print("valX = {}".format(valX.shape))
+    print("valY = {}".format(valY.shape))
+    print("teX = {}".format(teX.shape))
+    print("teY = {}".format(teY.shape))

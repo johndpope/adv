@@ -2,7 +2,7 @@ from __future__ import print_function
 import numpy as np
 from keras.models import Sequential, Model
 # from keras.utils.vis_utils import plot_model
-from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Dense, Dropout, Activation, Flatten, Reshape
 from keras.layers import GlobalAveragePooling2D, BatchNormalization
 from keras.layers import MaxPooling2D, Input, Lambda, Conv2D, UpSampling2D
 from keras.layers import LSTM, TimeDistributed, merge, SimpleRNN, ELU
@@ -257,17 +257,22 @@ def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
     return model
 
 
-def irnn(data_shape=(None, 784, 1), nb_classes=10,
-         learning_rate=1e-6, hidden_units=100):
+def irnn(data_shape, nb_classes=10,
+         learning_rate=1e-6, hidden_units=512):
     # clip_norm = 1.0
     model = Sequential()
     model.add(SimpleRNN(hidden_units,
-                        kernel_initializer=initializers.RandomNormal(sttdev=0.001),
+                        kernel_initializer=initializers.RandomNormal(stddev=0.001),
                         recurrent_initializer=initializers.Identity(gain=1.0),
-                        activation='relu',
-                        input_shape=data_shape[1:]))
+                        activation='relu', input_shape=data_shape))
+    model.add(Reshape((np.sqrt(hidden_units), np.sqrt(hidden_units))))
     model.add(SimpleRNN(256,
-                        kernel_initializer=initializers.RandomNormal(sttdev=0.001),
+                        kernel_initializer=initializers.RandomNormal(stddev=0.001),
+                        recurrent_initializer=initializers.Identity(gain=1.0),
+                        activation='relu'))
+    model.add(Reshape((np.sqrt(256), np.sqrt(256))))
+    model.add(SimpleRNN(100,
+                        kernel_initializer=initializers.RandomNormal(stddev=0.001),
                         recurrent_initializer=initializers.Identity(gain=1.0),
                         activation='relu'))
     model.add(Dense(nb_classes))
