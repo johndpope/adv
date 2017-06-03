@@ -857,46 +857,48 @@ def vis_cam(model, img, layer_name='conv2d_2'):
     plt.imsave(heatmap)
 
 
-def denoising_dictionary_learning(data, patch_size=(5, 5)):
+def denoising_dictionary_learning(data, patch_size=(7, 7)):
     from sklearn.decomposition import MiniBatchDictionaryLearning
     from sklearn.feature_extraction.image import extract_patches_2d
     from sklearn.feature_extraction.image import reconstruct_from_patches_2d
 
     data = extract_patches_2d(data, patch_size)
     data = data.reshape(data.shape[0], -1)
-    data -= np.mean(data, axis=0)
-    data /= np.std(data, axis=0) + 1e-7
+    intercept = np.mean(data, axis=0)
+    data -= intercept
+    data /= (np.std(data, axis=0) + 1e-5)
     # Learn the dictionary from reference patches
     print('Learning the dictionary...')
     dico = MiniBatchDictionaryLearning(n_components=100, alpha=1, n_iter=500)
     V = dico.fit(data).components_
-    plt.figure(figsize=(4.2, 4))
+    plt.figure(figsize=(5, 5))
     for i, comp in enumerate(V[:100]):
         plt.subplot(10, 10, i + 1)
         plt.imshow(comp.reshape(patch_size), cmap=plt.cm.gray_r,
                    interpolation='nearest')
         plt.xticks(())
         plt.yticks(())
-        plt.suptitle('Dictionary learned from face patches\n' +
+        plt.suptitle('Dictionary learned from data patches\n' +
                      'Train on %d patches' % (len(data)),
                      fontsize=16)
         plt.subplots_adjust(0.08, 0.02, 0.92, 0.85, 0.08, 0.23)
 
     print('Extracting noisy patches... ')
-    data = extract_patches_2d(distorted[:, width // 2:], patch_size)
-    data = data.reshape(data.shape[0], -1)
-    intercept = np.mean(data, axis=0)
-    data -= intercept
-    print('done in %.2fs.' % (time() - t0))
+    # data = extract_patches_2d(distorted, patch_size)
+    # data = data.reshape(data.shape[0], -1)
+    # intercept = np.mean(data, axis=0)
+    # data -= intercept
+    # print('done in %.2fs.' % (time() - t0))
 
     transform_algorithms = [
         ('Orthogonal Matching Pursuit\n1 atom', 'omp',
-             {'transform_n_nonzero_coefs': 1}),
+         {'transform_n_nonzero_coefs': 1}),
         ('Orthogonal Matching Pursuit\n2 atoms', 'omp',
-             {'transform_n_nonzero_coefs': 2}),
+         {'transform_n_nonzero_coefs': 2}),
         ('Least-angle regression\n5 atoms', 'lars',
-             {'transform_n_nonzero_coefs': 5}),
-        ('Thresholding\n alpha=0.1', 'threshold', {'transform_alpha': .1})]
+         {'transform_n_nonzero_coefs': 5}),
+        ('Thresholding\n alpha=0.1', 'threshold', {'transform_alpha': .1})
+    ]
 
     reconstructions = {}
     for title, transform_algorithm, kwargs in transform_algorithms:
@@ -911,10 +913,8 @@ def denoising_dictionary_learning(data, patch_size=(5, 5)):
         if transform_algorithm == 'threshold':
             patches -= patches.min()
             patches /= patches.max()
-            reconstructions[title][:, width // 2:] = reconstruct_from_patches_2d()
-            patches, (height, width // 2))
-            dt = time() - t0
-            print('done in %.2fs.' % dt)
-            show_with_diff(reconstructions[title], face,
-                           title + ' (time: %.1fs)' % dt)
-            plt.show()
+        reconstructions[title][:, w // 2:] = reconstruct_from_patches_2d(
+        patches, (height, width // 2))
+        show_with_diff(reconstructions[title], face,
+                           title)
+    plt.show()
