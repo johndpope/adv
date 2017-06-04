@@ -84,7 +84,6 @@ if __name__ == "__main__":
     print("args = {}".format(args))
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
     from utils import print_data_shapes
-    print_data_shapes(trX, trY, valX, valY, teX, teY)
 
     if args.model == "mlp_lle":
         import tensorflow as tf
@@ -103,6 +102,8 @@ if __name__ == "__main__":
         # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
         #                                                 args.model)(trX.shape[1:])
 
+    print_data_shapes(trX, trY, valX, valY, teX, teY)
+
     # Define TF model graph
     if args.pretrained:
         from keras.models import load_model
@@ -111,6 +112,7 @@ if __name__ == "__main__":
     else:
         import models
         model = getattr(models, args.model)(trX.shape[1:])
+
     model.summary()
     predictions = model(x)
     print("Defined TensorFlow graph.")

@@ -234,8 +234,8 @@ def swwae(X_train, X_test):
     # plt.savefig('reconstructions.png')
 
 
-def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
-                 row_hidden=128, col_hidden=128):
+def hierarchical(data_shape, nb_classes=10,
+                 row_hidden=256, col_hidden=256):
     # Embedding dimensions.
     # 4D input.
     x = Input(shape=data_shape)
@@ -245,7 +245,8 @@ def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
 
     # Encodes columns of encoded rows.
     encoded_columns = LSTM(col_hidden)(encoded_rows)
-    encoded_cols = LSTM(256)(encoded_columns)
+    reshaped = Reshape((16, 16))(encoded_columns)
+    encoded_cols = LSTM(256)(reshaped)
 
     # Final predictions and model.
     prediction = Dense(nb_classes, activation='softmax')(encoded_cols)
@@ -258,19 +259,19 @@ def hierarchical(data_shape=(28, 28, 1), nb_classes=10,
 
 
 def irnn(data_shape, nb_classes=10,
-         learning_rate=1e-6, hidden_units=512):
+         learning_rate=1e-6, hidden_units=784):
     # clip_norm = 1.0
     model = Sequential()
     model.add(SimpleRNN(hidden_units,
                         kernel_initializer=initializers.RandomNormal(stddev=0.001),
                         recurrent_initializer=initializers.Identity(gain=1.0),
                         activation='relu', input_shape=data_shape))
-    model.add(Reshape((np.sqrt(hidden_units), np.sqrt(hidden_units))))
+    model.add(Reshape((28, 28)))
     model.add(SimpleRNN(256,
                         kernel_initializer=initializers.RandomNormal(stddev=0.001),
                         recurrent_initializer=initializers.Identity(gain=1.0),
                         activation='relu'))
-    model.add(Reshape((np.sqrt(256), np.sqrt(256))))
+    model.add(Reshape((16, 16)))
     model.add(SimpleRNN(100,
                         kernel_initializer=initializers.RandomNormal(stddev=0.001),
                         recurrent_initializer=initializers.Identity(gain=1.0),
