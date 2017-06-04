@@ -101,6 +101,14 @@ if __name__ == "__main__":
         # for siamese
         # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
         #                                                 args.model)(trX.shape[1:])
+    if args.model == "siamese":
+        from models import create_siamese_data
+        trX = trX.reshape(-1, 784)
+        valX = valX.reshape(-1, 784)
+        teX = teX.reshape(-1, 784)
+        trX, trY, teX, teY = create_siamese_data(trX, trY,
+                                                 teX, teY)
+
     if args.model == "variational_ae":
         trX = trX.reshape((len(trX), np.prod(trX.shape[1:])))
         teX = teX.reshape((len(teX), np.prod(teX.shape[1:])))
@@ -169,6 +177,19 @@ if __name__ == "__main__":
                 plt.figure(figsize=(10, 10))
                 plt.imshow(figure, cmap='Greys_r')
                 plt.show()
+    if not args.pretrained and args.model == "siamese":
+        from models import compute_accuracy
+        model.fit([trX[:, 0], trX[:, 1]], trY, batch_size=args.batch_size,
+                  epochs=args.epochs, validation_data=([teX[:, 0], teX[:, 1]],
+                                                       teY))
+        # compute final accuracy on training and test sets
+        pred = model.predict([trX[:, 0], trX[:, 1]])
+        tr_acc = compute_accuracy(pred, trY)
+        pred = model.predict([teX[:, 0], teX[:, 1]])
+        te_acc = compute_accuracy(pred, teY)
+
+        print('* Accuracy on training set: %0.2f%%' % (100 * tr_acc))
+        print('* Accuracy on test set: %0.2f%%' % (100 * te_acc))
     else:
         model.fit(trX, trY, epochs=args.epochs,
                   batch_size=args.batch_size,

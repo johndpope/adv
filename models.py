@@ -83,7 +83,7 @@ def create_base_network(input_dim):
     return seq
 
 
-def siamese(X_train, X_test, y_train, y_test, input_dim=784):
+def create_siamese_data(X_train, y_train, X_test, y_test):
     # create training+test positive and negative pairs
     digit_indices = [np.where(y_train == i)[0] for i in range(10)]
     tr_pairs, tr_y = create_pairs(X_train, digit_indices)
@@ -91,11 +91,15 @@ def siamese(X_train, X_test, y_train, y_test, input_dim=784):
     digit_indices = [np.where(y_test == i)[0] for i in range(10)]
     te_pairs, te_y = create_pairs(X_test, digit_indices)
 
-    # network definition
-    base_network = create_base_network(input_dim)
+    return tr_pairs, tr_y, te_pairs, te_y
 
-    input_a = Input(shape=(input_dim,))
-    input_b = Input(shape=(input_dim,))
+
+def siamese(data_shape):
+    # network definition
+    base_network = create_base_network(data_shape)
+
+    input_a = Input(shape=(data_shape,))
+    input_b = Input(shape=(data_shape,))
 
     # because we re-use the same instance `base_network`,
     # the weights of the network
@@ -113,7 +117,7 @@ def siamese(X_train, X_test, y_train, y_test, input_dim=784):
     rms = RMSprop()
     model.compile(loss=contrastive_loss, optimizer=rms)
 
-    return model, tr_pairs, tr_y, te_pairs, te_y
+    return model
 
     # compute final accuracy on training and test sets
     # pred = model.predict([tr_pairs[:, 0], tr_pairs[:, 1]])
