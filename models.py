@@ -267,6 +267,11 @@ def irnn(data_shape, nb_classes=10,
                         recurrent_initializer=initializers.Identity(gain=1.0),
                         activation='relu', input_shape=data_shape))
     model.add(Reshape((28, 28)))
+    model.add(SimpleRNN(625,
+                        kernel_initializer=initializers.RandomNormal(stddev=0.001),
+                        recurrent_initializer=initializers.Identity(gain=1.0),
+                        activation='relu'))
+    model.add(Reshape((25, 25)))
     model.add(SimpleRNN(256,
                         kernel_initializer=initializers.RandomNormal(stddev=0.001),
                         recurrent_initializer=initializers.Identity(gain=1.0),
@@ -327,22 +332,8 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     else:
         data_shape = (img_rows, img_cols, channels)
 
-    # inpt = Input(shape=data_shape)
-    # # x = Dropout(0.2, input_shape=input_shape)(inpt)
-    # x = Conv2D(nb_filters, 8, 8, strides=(2, 2),
-    #                   padding='same', activation='relu')(inpt)
-    # x = Conv2D((nb_filters * 2), 6, 6, strides=(2, 2),
-    #                   padding='valid', activation='relu')(x)
-    # x = Conv2D((nb_filters * 2), 5, 5, strides=(1, 1),
-    #                   padding='valid', activation='relu')(x)
-    # # x = Dropout(0.5)(x)
-    # x = Flatten()(x)
-    # x = Dense(nb_classes, activation='softmax')(x)
-
-    # # y = Activation('softmax')(x)
-    # model = Model(inpt, x, name='cnn_model_mine')
     model = Sequential([
-        # Dropout(0.2, input_shape=data_shape),
+        Dropout(0.2, input_shape=data_shape),
         Conv2D(nb_filters, (8, 8), strides=(2, 2),
                padding='same', activation='relu',
                input_shape=data_shape),
@@ -350,7 +341,7 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
                padding='valid', activation='relu'),
         Conv2D((nb_filters * 2), (5, 5), strides=(1, 1),
                padding='valid', activation='relu'),
-        # Dropout(0.5),
+        Dropout(0.5),
         Flatten(),
         Dense(nb_classes, activation='softmax')
     ])
@@ -913,33 +904,42 @@ def resnet(repetations=3, net_type='resnet', shape=(28, 28, 1)):
     return model
 
 
-def variational_ae():
+def sampling(args):
+    z_mean, z_log_var = args
+    epsilon = K.random_normal(shape=(100, 2), mean=0.,
+                              stddev=1.0)
+    return z_mean + K.exp(z_log_var / 2.) * epsilon
+
+
+def variational_ae(data_shape):
     original_dim = 784
     latent_dim = 2
     intermediate_dim = 256
-    x = Input(batch_shape=(100, original_dim))
+    x = Input(shape=(data_shape))
     h = Dense(intermediate_dim, activation='relu')(x)
     z_mean = Dense(latent_dim)(h)
     z_log_var = Dense(latent_dim)(h)
+    # build a model to project inputs on the latent space
+    encoder = Model(x, z_mean)
 
-    def sampling(args):
-        z_mean, z_log_var = args
-        epsilon = K.random_normal(shape=(100, 2), mean=0.,
-                                  stddev=1.0)
-        return z_mean + K.exp(z_log_var / 2.) * epsilon
-
-    # note that "output_shape" isn't necessary with the TensorFlow backend
-    z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
     # we instantiate these layers separately so as to reuse them later
     decoder_h = Dense(intermediate_dim, activation='relu')
     decoder_mean = Dense(original_dim, activation='sigmoid')
+    # note that "output_shape" isn't necessary with the TensorFlow backend
+    z = Lambda(sampling, output_shape=(latent_dim,))([z_mean, z_log_var])
     h_decoded = decoder_h(z)
     x_decoded_mean = decoder_mean(h_decoded)
-    y = CustomVariationalLayer(z_mean, z_log_var)([x, x_decoded_mean])
+    y = CustomVariationalLayer()([x, x_decoded_mean, z_mean, z_log_var])
     vae = Model(x, y)
     vae.compile(optimizer='rmsprop', loss=None)
 
-    return vae
+    # build a digit generator that can sample from the learned distribution
+    decoder_input = Input(shape=(latent_dim))
+    _h_decoded = decoder_h(decoder_input)
+    _x_decoded_mean = decoder_mean(_h_decoded)
+    generator = Model(decoder_input, _x_decoded_mean)
+
+    return vae, encoder, generator
 
 
 def conv_ae(data_shape):

@@ -101,6 +101,9 @@ if __name__ == "__main__":
         # for siamese
         # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
         #                                                 args.model)(trX.shape[1:])
+    if args.model == "variational_ae":
+        trX = trX.reshape((len(trX), np.prod(trX.shape[1:])))
+        teX = teX.reshape((len(teX), np.prod(teX.shape[1:])))
 
     print_data_shapes(trX, trY, valX, valY, teX, teY)
 
@@ -111,7 +114,13 @@ if __name__ == "__main__":
                            + args.dataset + '.hdf5')
     else:
         import models
-        model = getattr(models, args.model)(trX.shape[1:])
+        if args.model == "variational_ae":
+            model, encoder, generator = getattr(models,
+                                                args.model)(trX.shape[1:])
+            encoder.summary()
+            generator.summary()
+        else:
+            model = getattr(models, args.model)(trX.shape[1:])
 
     model.summary()
     predictions = model(x)
@@ -124,7 +133,43 @@ if __name__ == "__main__":
                    'keras_learning_phase': 0}
 
     # train on dataset
-    if not args.pretrained:
+    if not args.pretrained and args.model == "variational_ae":
+        from scipy.stats import norm
+        import matplotlib.pyplot as plt
+        model.fit(trX,
+                  shuffle=True,
+                  epochs=args.epochs,
+                  batch_size=args.batch_size,
+                  validation_data=(teX, teX))
+        # display a 2D plot of the digit classes in the latent space
+        x_test_encoded = encoder.predict(teX, batch_size=args.batch_size)
+        plt.figure(figsize=(6, 6))
+        plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=teY)
+        plt.colorbar()
+        plt.show()
+
+        # display a 2D manifold of the digits
+        n = 15  # figure with 15x15 digits
+        digit_size = 28
+        figure = np.zeros((digit_size * n, digit_size * n))
+        # linearly spaced coordinates on the unit square were transformed
+        # Vthrough the inverse CDF (ppf) of the Gaussian
+        # to produce values of the latent variables z, since the prior
+        # of the latent space is Gaussian
+        grid_x = norm.ppf(np.linspace(0.05, 0.95, n))
+        grid_y = norm.ppf(np.linspace(0.05, 0.95, n))
+
+        for i, yi in enumerate(grid_x):
+            for j, xi in enumerate(grid_y):
+                z_sample = np.array([[xi, yi]])
+                x_decoded = generator.predict(z_sample)
+                digit = x_decoded[0].reshape(digit_size, digit_size)
+                figure[i * digit_size: (i + 1) * digit_size,
+                       j * digit_size: (j + 1) * digit_size] = digit
+                plt.figure(figsize=(10, 10))
+                plt.imshow(figure, cmap='Greys_r')
+                plt.show()
+    else:
         model.fit(trX, trY, epochs=args.epochs,
                   batch_size=args.batch_size,
                   validation_data=(valX, valY), verbose=1)
