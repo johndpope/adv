@@ -98,9 +98,7 @@ if __name__ == "__main__":
         teX = teX.reshape(-1, 784, 1)
         valX = valX.reshape(-1, 784, 1)
         x = tf.placeholder(tf.float32, shape=(None, 784, 1))
-        # for siamese
-        # model, tr_pairs, tr_y, te_pairs, te_y = getattr(models,
-        #                                                 args.model)(trX.shape[1:])
+
     if args.model == "siamese":
         from models import create_siamese_data
         trX = trX.reshape(-1, 784)
@@ -294,8 +292,6 @@ if __name__ == "__main__":
     if args.pair_visual is not None:
         pair_visual(teX[args.pair_visual].reshape(28, 28),
                     X_test_adv[args.pair_visual].reshape(28, 28))
-        import pdb
-        pdb.set_trace()
 
     if args.grid_visual is True:
         if args.dataset == "mnist":
