@@ -870,25 +870,25 @@ def _residual_block(block_function, nb_filters, repetations, net_type,
 
 
 # http://arxiv.org/pdf/1512.03385v1.pdf
-def resnet(repetations=3, net_type='resnet', shape=(28, 28, 1)):
+def resnet(data_shape, repetations=3, net_type='resnet'):
     """net_type: plain, resnet, squared_resnet."""
-    model_name = '%s_repetation_%d' % (net_type, repetations)
+    model_name = '{}_repetation_{}'.format(net_type, repetations)
     print(model_name)
 
-    input = Input(shape=shape)
+    input = Input(shape=data_shape)
     conv1 = _conv_bn_relu(nb_filter=16, nb_row=3, nb_col=3)(input)
     # feature map size (32, 32)
 
     # Build residual blocks..
     block_fn = _basic_block
-    block1 = _residual_block(block_fn, nb_filters=16, repetations=repetations,
-                             net_type=net_type, is_first_layer=True)(conv1)
+    block1 = _residual_block(block_fn, 16, repetations,
+                             net_type, is_first_layer=True)(conv1)
     # feature map size (16, 16)
-    block2 = _residual_block(block_fn, nb_filters=32, repetations=repetations,
-                             net_type=net_type)(block1)
+    block2 = _residual_block(block_fn, 32, repetations,
+                             net_type)(block1)
     # feature map size (8, 8)
-    block3 = _residual_block(block_fn, nb_filters=64, repetations=repetations,
-                             net_type=net_type)(block2)
+    block3 = _residual_block(block_fn, 64, repetations,
+                             net_type)(block2)
 
     block3_dropout = Dropout(0.25)(block3)
     post_block_norm = BatchNormalization(axis=3)(block3_dropout)
