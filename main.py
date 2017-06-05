@@ -85,7 +85,7 @@ if __name__ == "__main__":
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
     from utils import print_data_shapes
 
-    if args.model == "mlp_lle":
+    if args.model == "mlp_lle" or args.model == "mlp":
         import tensorflow as tf
         trX = trX.reshape(-1, 784)
         teX = teX.reshape(-1, 784)
@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
         print('* Accuracy on training set: %0.2f%%' % (100 * tr_acc))
         print('* Accuracy on test set: %0.2f%%' % (100 * te_acc))
-    else:
+    if not args.pretrained:
         model.fit(trX, trY, epochs=args.epochs,
                   batch_size=args.batch_size,
                   validation_data=(valX, valY), verbose=1)
@@ -290,8 +290,9 @@ if __name__ == "__main__":
         rank_features(np.vstack((trX, valX)).reshape(-1, 784),
                       np.argmax(np.vstack((trY, valY)), axis=1))
     if args.pair_visual is not None:
-        pair_visual(teX[args.pair_visual].reshape(28, 28),
-                    X_test_adv[args.pair_visual].reshape(28, 28))
+        fig = pair_visual(teX[args.pair_visual].reshape(28, 28),
+                          X_test_adv[args.pair_visual].reshape(28, 28))
+        import pdb; pdb.set_trace() ## DEBUG ##
 
     if args.grid_visual is True:
         if args.dataset == "mnist":

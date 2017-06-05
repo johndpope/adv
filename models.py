@@ -245,7 +245,7 @@ def hierarchical(data_shape, nb_classes=10,
     x = Input(shape=data_shape)
 
     # Encodes a row of pixels using TimeDistributed Wrapper.
-    encoded_rows = TimeDistributed(LSTM(output_dim=row_hidden))(x)
+    encoded_rows = TimeDistributed(LSTM(units=row_hidden))(x)
 
     # Encodes columns of encoded rows.
     encoded_columns = LSTM(col_hidden)(encoded_rows)
@@ -295,7 +295,7 @@ def irnn(data_shape, nb_classes=10,
     return model
 
 
-def mlp(data_shape=(784,)):
+def mlp(data_shape):
     model = Sequential()
     model.add(Dense(512, input_shape=data_shape))
     model.add(Activation('relu'))
@@ -337,7 +337,7 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
         data_shape = (img_rows, img_cols, channels)
 
     model = Sequential([
-        Dropout(0.2, input_shape=data_shape),
+        Dropout(0.5, input_shape=data_shape),
         Conv2D(nb_filters, (8, 8), strides=(2, 2),
                padding='same', activation='relu',
                input_shape=data_shape),
@@ -345,7 +345,7 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
                padding='valid', activation='relu'),
         Conv2D((nb_filters * 2), (5, 5), strides=(1, 1),
                padding='valid', activation='relu'),
-        Dropout(0.5),
+        Dropout(0.25),
         Flatten(),
         Dense(nb_classes, activation='softmax')
     ])
