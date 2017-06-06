@@ -297,17 +297,22 @@ def irnn(data_shape, nb_classes=10,
 
 def mlp(data_shape):
     model = Sequential()
-    model.add(Dense(512, input_shape=data_shape))
+    model.add(Dropout(0.5, input_shape=data_shape))
+    model.add(BatchNormalization(axis=1))
+    model.add(Dense(784))
     model.add(Activation('relu'))
-    model.add(Dropout(0.2))
+    model.add(BatchNormalization(axis=1))
     model.add(Dense(512))
     model.add(Activation('relu'))
     model.add(Dropout(0.2))
+    model.add(BatchNormalization(axis=1))
+    model.add(Dense(256))
+    model.add(Activation('relu'))
     model.add(Dense(10))
     model.add(Activation('softmax'))
 
     model.compile(loss='categorical_crossentropy',
-                  optimizer=RMSprop(),
+                  optimizer='adam',
                   metrics=['accuracy'])
 
     return model
