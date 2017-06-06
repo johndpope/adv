@@ -67,12 +67,25 @@ def setup_data(args):
         teY = np.load('data/cifar10/teY_lle_10n_3072c.npy')
         x = tf.placeholder(tf.float32, shape=(None, 32, 32, 3))
 
+    if trY.ndim <= 2 and teY.ndim <= 2:
+        trY = to_categorical(trY, 10)
+        teY = to_categorical(teY, 10)
+
+    label_smooth = .1
+    trY = np.float32(trY.clip(label_smooth / 9., 1. - label_smooth))
+    teY = np.float32(teY.clip(label_smooth / 9., 1. - label_smooth))
+
     trX = trX.astype('float32')
     teX = teX.astype('float32')
-    # trX /= 255.
-    # teX /= 255.
-    trY = trY.astype('int32')
-    teY = teY.astype('int32')
+    trX /= 255.
+    teX /= 255.
+    # when data stationary remove mean pixel intensity per example
+    # for idx, val in enumerate(trX.reshape(-1, 784)):
+    #     trX[idx] = trX[idx] - np.mean(val)
+    # for idx, val in enumerate(teX.reshape(-1, 784)):
+    #     teX[idx] = teX[idx] - np.mean(val)
+    # trY = trY.astype('int32')
+    # teY = teY.astype('int32')
 
     if args.split_dataset is not None:
         trX, valX, trY, valY = train_test_split(trX, trY,
@@ -86,16 +99,6 @@ def setup_data(args):
         trX = trX.reshape(-1, 32, 32, 3)
         teX = teX.reshape(-1, 32, 32, 3)
         valX = valX.reshape(-1, 32, 32, 3)
-
-    if trY.ndim <= 2 and teY.ndim <= 2:
-        trY = to_categorical(trY, 10)
-        teY = to_categorical(teY, 10)
-        valY = to_categorical(valY, 10)
-
-    label_smooth = .1
-    trY = trY.clip(label_smooth / 9., 1. - label_smooth)
-    teY = teY.clip(label_smooth / 9., 1. - label_smooth)
-    valY = valY.clip(label_smooth / 9., 1. - label_smooth)
 
     # Define input TF placeholder
     y = tf.placeholder(tf.float32, shape=(None, 10))

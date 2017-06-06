@@ -696,22 +696,21 @@ def ga_checkpoint_deap(checkpoint=None):
 
 
 def mse(imgA, imgB):
+    err = 0.
     if imgA.ndim == 3 and imgB.ndim == 3:
         if imgA.shape[2] == 3 and imgB.shape[2] == 3:
-            err = 0.
             for c in xrange(imgA.shape[2]):
                 err += np.sum((imgA[:, :, c].astype('float32')
                                - imgB[:, :, c].astype('float32')) ** 2)
-            err /= np.prod(imgA.shape[:3])  # maybe also x3
-        else:
-            if imgA.ndim == 3 and imgB.ndim == 3:
-                if imgA.shape[2] == 1 and imgB.shape[2] == 1:
-                    imgA = imgA.reshape(imgA.shape[0], imgA.shape[1])
-                    imgB = imgB.reshape(imgB.shape[0], imgB.shape[1])
+            err /= (np.prod(imgA.shape[:2]) + 1e-5)  # maybe also x3
+    else:
+        if imgA.ndim == 3 and imgB.ndim == 3:
+            if imgA.shape[2] == 1 and imgB.shape[2] == 1:
+                imgA = imgA.reshape(imgA.shape[0], imgA.shape[1])
+                imgB = imgB.reshape(imgB.shape[0], imgB.shape[1])
 
-            err = np.sum((imgA.astype('float32') -
-                          imgB.astype('float32')) ** 2)
-            err /= float(np.prod(imgA.shape[:2]))
+        err = np.sum((np.float32(imgA) - np.float32(imgB)) ** 2)
+        err = err / (np.float32(np.prod(imgA.shape)) + 1e-5)
 
     psnr = 20.0 * np.log10(np.max(imgA)) - 10.0 * np.log10(err)  # np.max(imgA)
     # should be 255.
@@ -720,7 +719,7 @@ def mse(imgA, imgB):
 
 
 def ssim(imgA, imgB):
-    return compare_ssim(imgA, imgB, multichannel=True)
+    return compare_ssim(np.float32(imgA), np.float32(imgB), multichannel=True)
 
 
 def plot_feature_ranking(X, ranking):
@@ -859,18 +858,23 @@ def vis_cam(model, img, layer_name='conv2d_2'):
 
 def plot_img_diff(orig_img, distorted, title):
     """ Helper function to display denoising """
-    plt.figure(figsize=(5, 3.3))
-    plt.subplot(1, 2, 1)
-    plt.title('Distorted Image')
-    plt.imshow(distorted, vmin=0, vmax=1, cmap=plt.cm.gray_r,
+    plt.figure(figsize=(7, 4))
+    plt.subplot(1, 3, 1)
+    plt.title('Orignal Image')
+    plt.imshow(orig_img, vmin=0, vmax=1, cmap=plt.cm.gray_r,
+               interpolation='nearest')
+
+    difference = distorted - orig_img
+    plt.subplot(1, 3, 2)
+    plt.title('Difference ($\ell_2$ norm: %.2f)'
+              % np.sqrt(np.sum(difference ** 2)))
+    plt.imshow(difference, vmin=-0.5, vmax=0.5, cmap=plt.cm.PuOr,
                interpolation='nearest')
     plt.xticks(())
     plt.yticks(())
-    plt.subplot(1, 2, 2)
-    difference = distorted - orig_img
-
-    plt.title('Difference (norm: %.2f)' % np.sqrt(np.sum(difference ** 2)))
-    plt.imshow(difference, vmin=-0.5, vmax=0.5, cmap=plt.cm.PuOr,
+    plt.subplot(1, 3, 3)
+    plt.title('Distorted Image')
+    plt.imshow(distorted, vmin=0, vmax=1, cmap='gray_r',
                interpolation='nearest')
     plt.xticks(())
     plt.yticks(())
@@ -917,12 +921,12 @@ def denoising_dictionary_learning(img_orig, distorted, patch_size=(7, 7)):
     data -= intercept
 
     transform_algorithms = [
-        ('Orthogonal Matching Pursuit\n1 atom', 'omp',
+        ('OMP\n1 atom', 'omp',
          {'transform_n_nonzero_coefs': 1}),
-        ('Orthogonal Matching Pursuit\n2 atoms', 'omp',
-         {'transform_n_nonzero_coefs': 2}),
-        ('Least-angle regression\n5 atoms', 'lars',
-         {'transform_n_nonzero_coefs': 5}),
+        ('OMP\n38 atoms', 'omp',
+         {'transform_n_nonzero_coefs': 38}),
+        ('Least-angle regression\n15 atoms', 'lars',
+         {'transform_n_nonzero_coefs': 15}),
         ('Thresholding\n alpha=0.1', 'threshold', {'transform_alpha': .1})
     ]
     print("Starting reconstruction of image from noisy patches...")
@@ -944,11 +948,13 @@ def denoising_dictionary_learning(img_orig, distorted, patch_size=(7, 7)):
         plot_img_diff(img_orig, reconstructions[title], title)
     plt.show()
 
+    return reconstructions
+
 
 def print_data_shapes(trX, trY, valX, valY, teX, teY):
-    print("trX = {}".format(trX.shape))
-    print("trY = {}".format(trY.shape))
-    print("valX = {}".format(valX.shape))
-    print("valY = {}".format(valY.shape))
-    print("teX = {}".format(teX.shape))
-    print("teY = {}".format(teY.shape))
+    print("trX = {}, type = {}".format(trX.shape, trX.dtype))
+    print("trY = {} type = {}".format(trY.shape, trY.dtype))
+    print("valX = {}, type = {}".format(valX.shape, valX.dtype))
+    print("valY = {}, type = {}".format(valY.shape, valY.dtype))
+    print("teX = {}, type = {}".format(teX.shape, teX.dtype))
+    print("teY = {}, type = {}".format(teY.shape, teY.dtype))
