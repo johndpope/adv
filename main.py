@@ -38,7 +38,7 @@ def get_args():
                         "testing against adversarial attacks")
     parser.add_argument("-a", "--attack", type=str, default="fgsm",
                         help="Choose the method of attack, "
-                        "1.)fgsm, 2.)jsma")
+                        "fgsm | jsma | blackbox")
     parser.add_argument("-ds", "--dataset", type=str, required=True,
                         help="mnist | cifar10 | voc2012")
     parser.add_argument("-c", "--nb_classes", type=int, default=10,
@@ -204,7 +204,9 @@ if __name__ == "__main__":
           .format(scores[1]))
 
     if args.attack == "jsma":
-        jsma_attack(sess, model, x, y, predictions, args, teX, teY)
+        X_test_adv = jsma_attack(sess, model, x, y, predictions, args,
+                                 teX, teY)
+        import pdb; pdb.set_trace() ## DEBUG ##
     elif args.attack == "blackbox":
         # Initialize substitute training set reserved for adversary
         subX = teX[:args.holdout]
@@ -292,7 +294,6 @@ if __name__ == "__main__":
     if args.pair_visual is not None:
         fig = pair_visual(teX[args.pair_visual].reshape(28, 28),
                           X_test_adv[args.pair_visual].reshape(28, 28))
-        import pdb; pdb.set_trace() ## DEBUG ##
 
     if args.grid_visual is True:
         if args.dataset == "mnist":

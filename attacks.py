@@ -181,6 +181,7 @@ def jsma_attack(sess, model, x, y, preds, args, teX, teY):
           str(args.nb_classes-1) + ' adversarial examples')
 
     img_rows, img_cols, nb_channels = teX[0].shape
+    X_test_adv = np.zeros_like(teX)
 
     # Keep track of success (adversarial example classified in target)
     results = np.zeros((args.nb_classes, args.nb_attack_samples), dtype='i')
@@ -231,6 +232,7 @@ def jsma_attack(sess, model, x, y, preds, args, teX, teY):
                                      theta=1., gamma=0.1, nb_classes=10,
                                      clip_min=0., clip_max=1., targets=y,
                                      y_val=one_hot_target)
+            X_test_adv[sample_ind:(sample_ind + 1)] = adv_x
 
             # Check if success was achieved
             res = int(model_argmax(sess, x, preds, adv_x) == target)
@@ -279,3 +281,5 @@ def jsma_attack(sess, model, x, y, preds, args, teX, teY):
     percent_perturb_succ = np.mean(perturbations * (results == 1))
     print('Avg. rate of perturbed features for successful '
           'adversarial examples {0:.4f}'.format(percent_perturb_succ))
+
+    return X_test_adv
