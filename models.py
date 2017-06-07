@@ -318,8 +318,7 @@ def mlp(data_shape):
     return model
 
 
-def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
-              channels=1, nb_filters=64, nb_classes=10):
+def cnn_model(data_shape, logits=False, input_ph=None, nb_filters=64, nb_classes=10):
     """
     :param logits: If set to False, returns a Keras model, otherwise will also
                     return logits tensor
@@ -336,10 +335,10 @@ def cnn_model(logits=False, input_ph=None, img_rows=28, img_cols=28,
     """
 
     # Define the layers successively
-    if K.image_dim_ordering() == 'th':
-        data_shape = (channels, img_rows, img_cols)
-    else:
-        data_shape = (img_rows, img_cols, channels)
+    #if K.image_dim_ordering() == 'th':
+    #    data_shape = (channels, img_rows, img_cols)
+    #else:
+    #    data_shape = (img_rows, img_cols, channels)
 
     model = Sequential([
         Dropout(0.5, input_shape=data_shape),
@@ -467,10 +466,10 @@ def identity_model(test=None, inpt=Input(shape=(28, 28, 1)),
     return model
 
 
-def cifar10_cnn(X_train, nb_classes=10):
+def cnn_cifar(data_shape, nb_classes=10):
     model = Sequential([
-        Conv2D(32, (3, 3), activation='relu', padding='same',
-               input_shape=X_train.shape[1:]),
+        Dropout(0.5, input_shape=data_shape),
+        Conv2D(32, (3, 3), activation='relu', padding='same'),
         Conv2D(32, (3, 3), activation='relu'),
         MaxPooling2D(pool_size=(2, 2)),
         Dropout(0.25),
@@ -486,7 +485,7 @@ def cifar10_cnn(X_train, nb_classes=10):
 
     # Let's train the model using RMSprop
     model.compile(loss='categorical_crossentropy',
-                  optimizer='rmsprop',
+                  optimizer='adam',
                   metrics=['accuracy'])
 
     return model

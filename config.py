@@ -51,7 +51,7 @@ def setup_data(args):
         # trX, trY, teX, teY = data_mnist()
         (trX, trY), (teX, teY) = mnist.load_data()
         x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
-    elif args.dataset == "cifar":
+    elif args.dataset == "cifar10":
         (trX, trY), (teX, teY) = cifar10.load_data()
         x = tf.placeholder(tf.float32, shape=(None, 32, 32, 3))
     elif args.dataset == "mnist_lle":
@@ -95,7 +95,7 @@ def setup_data(args):
         trX = trX.reshape(-1, 28, 28, 1)
         teX = teX.reshape(-1, 28, 28, 1)
         valX = valX.reshape(-1, 28, 28, 1)
-    if args.dataset == "cifar" or args.dataset == "cifar_lle":
+    if args.dataset == "cifar10" or args.dataset == "cifar_lle":
         trX = trX.reshape(-1, 32, 32, 3)
         teX = teX.reshape(-1, 32, 32, 3)
         valX = valX.reshape(-1, 32, 32, 3)
