@@ -958,3 +958,33 @@ def print_data_shapes(trX, trY, valX, valY, teX, teY):
     print("valY = {}, type = {}".format(valY.shape, valY.dtype))
     print("teX = {}, type = {}".format(teX.shape, teX.dtype))
     print("teY = {}, type = {}".format(teY.shape, teY.dtype))
+
+
+def wilson_score_interval(error, N):
+    """
+    Compute confidence intervals for classifier
+    error +/- const * sqrt((error * (1 - error)) / n)
+    param: const takes the following values
+    1.64 (90%)
+    1.96 (95%)
+    2.33 (98%)
+    2.58 (99%)
+    param N: validation data set sample size
+    Notice: this applies only to discrete-valued hypotheses. It assumes
+    the sample S is drawn at random using teh same distribution from
+    which future data will be drawn. Also it assumes data is independent
+    of the hypothesis being tested.
+    Provides only an approximate confidence interval. It's good when
+    the sample contains at least 30 examples and error is not to close
+    to 0 or 1.
+    Notice that the confidence intervals on the classification error must
+    be clipped to the values 0.0 and 1.0. It is impossible to have a
+    negative error (e.g. less than 0.0) or an error more than 1.0.
+    """
+    err = error
+    deviation = 1.96 * np.sqrt((error * (1 - error)) / N)
+    strr = str(error) + '+/-' + str(deviation)
+    print("error = {}".format(strr))
+    print("There is a 95% likelihood that the confidence interval {}"
+          " covers the true classification error of the model on unseen data."
+          .format(np.clip(np.array([0.0, err + deviation]), 0, 1)))
