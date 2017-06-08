@@ -988,3 +988,32 @@ def wilson_score_interval(error, N):
     print("There is a 95% likelihood that the confidence interval {}"
           " covers the true classification error of the model on unseen data."
           .format(np.clip(np.array([0.0, err + deviation]), 0, 1)))
+
+
+def mcnerman_midp(b, c):
+    """
+    Compute McNemar's test using the "mid-p" variant suggested by:
+
+    M.W. Fagerland, S. Lydersen, P. Laake. 2013. The McNemar test for
+    binary matched-pairs data: Mid-p and asymptotic are better than exact
+    conditional. BMC Medical Research Methodology 13: 91.
+
+    `b` is the number of observations correctly labeled by the first---but
+    not the second---system; `c` is the number of observations correctly
+    labeled by the second---but not the first---system.
+    The H0 hypothesis is that if midp value < 3.84 then the error rate
+    for two classifiers if the same otherwise if midp value > 3.84 then
+    error rate for the 2 classifiers is very different.
+    """
+    from scipy.stats import binom
+    n = b + c
+    x = min(b, c)
+    dist = binom(n, .5)
+    p = 2. * dist.cdf(x)
+    midp = p - dist.pmf(x)
+    if midp < 3.84:
+        print("Error rate for classifiers is not significantly different")
+    if midp > 3.84:
+        print("Error rate for classifiers if significantly different")
+
+    return midp
