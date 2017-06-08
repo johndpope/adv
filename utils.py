@@ -703,14 +703,14 @@ def mse(imgA, imgB):
                 err += np.sum((imgA[:, :, c].astype('float32')
                                - imgB[:, :, c].astype('float32')) ** 2)
             err /= (np.prod(imgA.shape[:2]) + 1e-5)  # maybe also x3
-    else:
-        if imgA.ndim == 3 and imgB.ndim == 3:
-            if imgA.shape[2] == 1 and imgB.shape[2] == 1:
-                imgA = imgA.reshape(imgA.shape[0], imgA.shape[1])
-                imgB = imgB.reshape(imgB.shape[0], imgB.shape[1])
+    # else:
+    #     if imgA.ndim == 3 and imgB.ndim == 3:
+        if imgA.shape[2] == 1 and imgB.shape[2] == 1:
+            imgA = imgA.reshape(imgA.shape[0], imgA.shape[1])
+            imgB = imgB.reshape(imgB.shape[0], imgB.shape[1])
 
-        err = np.sum((np.float32(imgA) - np.float32(imgB)) ** 2)
-        err = err / (np.float32(np.prod(imgA.shape)) + 1e-5)
+    err = np.sum((np.float32(imgA) - np.float32(imgB)) ** 2)
+    err = err / (np.float32(np.prod(imgA.shape)) + 1e-5)
 
     psnr = 20.0 * np.log10(np.max(imgA)) - 10.0 * np.log10(err)  # np.max(imgA)
     # should be 255.
@@ -858,6 +858,7 @@ def vis_cam(model, img, layer_name='conv2d_2'):
 
 def plot_img_diff(orig_img, distorted, title):
     """ Helper function to display denoising """
+    psnr, msqerr = mse(orig_img, distorted)
     plt.figure(figsize=(7, 4))
     plt.subplot(1, 3, 1)
     plt.title('Orignal Image')
@@ -873,7 +874,7 @@ def plot_img_diff(orig_img, distorted, title):
     plt.xticks(())
     plt.yticks(())
     plt.subplot(1, 3, 3)
-    plt.title('Distorted Image')
+    plt.title('Distorted Image PSNR: {}, MSE: {}'.format(psnr, msqerr))
     plt.imshow(distorted, vmin=0, vmax=1, cmap='gray_r',
                interpolation='nearest')
     plt.xticks(())

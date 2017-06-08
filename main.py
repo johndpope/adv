@@ -50,7 +50,7 @@ def get_args():
                         help="Rank feature importance using xgboost")
     parser.add_argument("-p", "--plot_arch", type=bool, default=False,
                         help="Plot the network architecture.")
-    parser.add_argument("-s", "--split_dataset", type=float, default=0.21,
+    parser.add_argument("-sp", "--split_dataset", type=float, default=0.21,
                         help="Split the datasset. Keep % for validation.")
     parser.add_argument("-eps", "--epsilon", type=float, default=0.3,
                         help="Epsilon variable for adversarial distortion")
@@ -71,6 +71,9 @@ def get_args():
                         help="Nb of test set examples to attack")
     parser.add_argument("-pr", "--pretrained", type=bool, default=False,
                         help="Wether to load a pretrained model or not")
+    parser.add_argument("-sc", "--scale", type=bool, required=True,
+                        default=False,
+                        help="Scale dataset by dividing with 255 or not")
     args = parser.parse_args()
 
     return args
@@ -200,8 +203,8 @@ if __name__ == "__main__":
     # Evaluate accuracy of the MNIST model on legitimate test
     # examples
     scores = model.evaluate(teX, teY)
-    print("Test accuracy on legitimate test examples: {}"
-          .format(scores[1]))
+    print("Test loss: {} and accuracy: {} on legitimate test examples"
+          .format(scores[0], scores[1]))
 
     if args.attack == "jsma":
         X_test_adv = jsma_attack(sess, model, x, y, predictions, args,
@@ -324,4 +327,4 @@ if __name__ == "__main__":
                          batch_size=args.batch_size)
 
     # Close TF session
-    sess.close()
+    # sess.close()

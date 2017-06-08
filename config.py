@@ -77,8 +77,10 @@ def setup_data(args):
 
     trX = trX.astype('float32')
     teX = teX.astype('float32')
-    trX /= 255.
-    teX /= 255.
+
+    if args.scale:
+        trX /= 255.
+        teX /= 255.
     # when data stationary remove mean pixel intensity per example
     # for idx, val in enumerate(trX.reshape(-1, 784)):
     #     trX[idx] = trX[idx] - np.mean(val)
