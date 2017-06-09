@@ -48,7 +48,6 @@ def setup_config():
 def setup_data(args):
     # Get test data
     if args.dataset == "mnist":
-        # trX, trY, teX, teY = data_mnist()
         (trX, trY), (teX, teY) = mnist.load_data()
         x = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
     elif args.dataset == "cifar10":

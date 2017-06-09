@@ -295,34 +295,40 @@ def get_output_layer(model, layer_name):
     return layer
 
 
-def visualize_class_activation_map(model, img_path, output_path,
-                                   layer_name="conv5_3", target_class=1):
+def visualize_class_activation_map(model, img, layer_name="conv5_3",
+                                   target_class=1,
+                                   output_path='./gradcam/gradimg.png'):
     # model = load_model(model_path)
-    original_img = cv2.imread(img_path, 1)
-    width, height, _ = original_img.shape
+    # original_img = cv2.imread(img_path, 1)
+    width, height, _ = img.shape
 
     # Reshape to the network input shape (3, w, h).
-    img = np.array([np.transpose(np.float32(original_img), (2, 0, 1))])
+    # img = np.array([np.transpose(np.float32(original_img), (2, 0, 1))])
 
     # Get the 512 input weights to the softmax.
     class_weights = model.layers[-1].get_weights()[0]
-    final_conv_layer = model.get_output_layer(model, layer_name)
+    final_conv_layer = get_output_layer(model, layer_name)
     get_output = K.function([model.layers[0].input],
                             [final_conv_layer.output,
                              model.layers[-1].output])
-    [conv_outputs, predictions] = get_output([img])
+    [conv_outputs, predictions] = get_output([np.expand_dims(img, axis=0)])
     conv_outputs = conv_outputs[0, :, :, :]
 
     # Create the class activation map.
-    cam = np.zeros(dtype=np.float32, shape=conv_outputs.shape[1:3])
-    for i, w in enumerate(class_weights[:, target_class]):
-            cam += w * conv_outputs[i, :, :]
+    cam = np.zeros(dtype=np.float32, shape=conv_outputs.shape[:2])
+    counter = 0
+    for w in class_weights[:, target_class]:
+        if counter > conv_outputs.shape[2] - 1:
+            counter = 0
+        cam += w * conv_outputs[:, :, counter]
+        counter += 1
     print("predictions", predictions)
+    import pdb; pdb.set_trace() ## DEBUG ##
     cam /= np.max(cam)
     cam = cv2.resize(cam, (height, width))
     heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
     heatmap[np.where(cam < 0.2)] = 0
-    img = heatmap * 0.5 + original_img
+    img = heatmap * 0.5 + img
     cv2.imwrite(output_path, img)
 
 
@@ -841,16 +847,27 @@ def feature_selection(X, y, mode='univariate', model='regression'):
         return features1, features2
 
 
-def vis_cam(model, img, layer_name='conv2d_2'):
+def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None):
+    """
+    params: img 4D tensor
+    layer_name: layer whose feature map you want to visualize
+    penultimate_layer_idx: previous layer index of layer_name whose grads
+    are computed wrt its feature map
+    """
     from vis.visualization import visualize_cam
     # from keras.models import load_model
     # model = load_model('./models/' + model_name)
+    if layer_name is None:
+        raise Warning("You need to provide a layer name indicating the layer"
+                      " index of the cam you want to compute.")
+        return -1
     layer_idx = [idx for idx, layer in enumerate(model.layers)
                  if layer.name == layer_name][0]
-    pred_class = np.argmax(model.predict(np.expand_dims(img, axis=0)))
+    pred_class = np.argmax(model.predict(np.expand_dims(img * 255, axis=0)))
     print("image shape {}, predicted_class = {}".format(img.shape,
                                                         pred_class))
-    heatmap = visualize_cam(model, layer_idx, [pred_class], img)
+    heatmap = visualize_cam(model, layer_idx, [pred_class], img,
+                            penultimate_layer_idx)
     plt.imshow(heatmap)
     plt.show()
     plt.imsave(heatmap)
@@ -859,6 +876,7 @@ def vis_cam(model, img, layer_name='conv2d_2'):
 def plot_img_diff(orig_img, distorted, title):
     """ Helper function to display denoising """
     psnr, msqerr = mse(orig_img, distorted)
+    sim = ssim(orig_img, distorted)
     plt.figure(figsize=(7, 4))
     plt.subplot(1, 3, 1)
     plt.title('Orignal Image')
@@ -874,7 +892,8 @@ def plot_img_diff(orig_img, distorted, title):
     plt.xticks(())
     plt.yticks(())
     plt.subplot(1, 3, 3)
-    plt.title('Distorted Image PSNR: {}, MSE: {}'.format(psnr, msqerr))
+    plt.title('Distorted Image\nPSNR: {:.2f}\nMSE: {:.2f}\nSSIM: {:.2}'
+              .format(psnr, msqerr, sim))
     plt.imshow(distorted, vmin=0, vmax=1, cmap='gray_r',
                interpolation='nearest')
     plt.xticks(())

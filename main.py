@@ -21,6 +21,7 @@ from attacks import evaluate_adversarial, whitebox_fgsm, jsma_attack
 from attacks import prep_blackbox, substitute_model, train_sub
 from utils import find_top_predictions, vis_cam
 from sklearn.manifold import LocallyLinearEmbedding
+import fnmatch
 
 
 def get_args():
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
     from utils import print_data_shapes
 
-    if args.model == "mlp_lle" or args.model == "mlp":
+    if args.model == "mlp_lle" or fnmatch.fnmatch(args.model, "mlp_*"):
         import tensorflow as tf
         trX = trX.reshape(-1, 784)
         teX = teX.reshape(-1, 784)
@@ -287,7 +288,7 @@ if __name__ == "__main__":
         #                                teX, teY, eval_params)
 
     if args.plot_arch is True:
-        plot_model(model, to_file=eval(args.model + '.png'),
+        plot_model(model, to_file=eval(args.model + '_topology.png'),
                    show_shapes=True,
                    show_layer_names=True)
 
@@ -295,8 +296,22 @@ if __name__ == "__main__":
         rank_features(np.vstack((trX, valX)).reshape(-1, 784),
                       np.argmax(np.vstack((trY, valY)), axis=1))
     if args.pair_visual is not None:
-        fig = pair_visual(teX[args.pair_visual].reshape(28, 28),
-                          X_test_adv[args.pair_visual].reshape(28, 28))
+        from utils import plot_img_diff
+        if args.dataset == "mnist" or args.dataset == "mnist_lle":
+            shape = 28, 28
+        else:
+            shape = teX.shape[1:]
+        fig = pair_visual(teX[args.pair_visual].reshape(shape),
+                          X_test_adv[args.pair_visual].reshape(shape))
+        plot_img_diff(
+            teX[args.pair_visual].reshape(shape),
+            X_test_adv[args.pair_visual].reshape(shape),
+            'class {}, prob. {:.2f}%'
+            .format(
+                np.argmax(teY[args.pair_visual], axis=0),
+                np.max(teY[args.pair_visual]) * 100
+                )
+            )
 
     if args.grid_visual is True:
         if args.dataset == "mnist":
