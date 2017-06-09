@@ -629,31 +629,44 @@ def calculate_fitness(feature_vectors):
 def find_top_predictions(model, model_name, layer_name, teX, teY,
                          teX_adv, count):
     preds = model.predict(teX)
-    preds_adv = model.predict(teX_adv)
-    rows, cols = np.where(preds >= np.max(preds, axis=0))
-    targets = np.argmax(preds[rows], axis=1)[:count]
-    orig_targets = np.argmax(teY[rows], axis=1)[:count]
-    accuracies = preds[rows]
-    accuracies = accuracies[:count]
-    accuracies_adv = preds_adv[rows]
-    adv_accuracies = accuracies_adv[:count]
+    targets = np.argmax(preds, axis=1)
+    orig_targets = np.argmax(teY, axis=1)
+    accuracies = np.max(preds, axis=1)
+    final_matrix = np.zeros((len(preds), 3))
+    final_matrix[:, 0] = orig_targets
+    final_matrix[:, 1] = targets
+    final_matrix[:, 2] = accuracies
+    # sort the array based on accuracies in reverse order
+    final_matrix.view('i8, i8, i8').sort(order=['f2'], axis=0)
+    final_matrix = final_matrix[::-1][:count]
+    _, ind = np.unique(final_matrix[:, 1], return_index=True)
+    accuracies = final_matrix[ind, 2]
+    targets = np.int32(final_matrix[ind, 1])
+    orig_targets = np.int32(final_matrix[ind, 0])
     imgs = teX[targets]
-    imgs = imgs[:count]
-    print("top image labels are {}".format(targets))
-    print("accuracies for top image labels are {}".format(
-        np.max(accuracies, axis=1)))
-    print("accuracies for top adv. image labels are {}".format(
-        np.max(adv_accuracies, axis=1)))
-    print("true labels for top images are {}".format(orig_targets))
-    print("top images are {}".format(imgs.shape))
-    imgs_adv = teX_adv[rows]
-    imgs_adv = imgs_adv[:count]
-    print("top adv. images are {}".format(imgs_adv.shape))
-    for key, val in enumerate(imgs_adv):
-        pair_visual(imgs[key].reshape(28, 28),
-                    imgs_adv[key].reshape(28, 28))
-        run_gradcam(model, model_name, imgs[key], orig_targets[key],
-                    layer_name)
+    imgs_adv = teX_adv[targets]
+    adv_preds = model.predict(imgs_adv)
+    adv_targets = np.argmax(adv_preds, axis=1)
+    adv_accuracies = np.max(adv_preds, axis=1)
+    print("predicted top {} image labels: {}, true labels: {}\naccuracy: {}"
+          .format(count, targets, orig_targets, accuracies))
+    print("top {} adv. image accuracy: {}\nadv. labels: {}"
+          .format(count, adv_accuracies, adv_targets))
+    print("top predicted images:")
+    fig, axes = plt.subplots(1, len(ind))
+    for im in xrange(len(ind)):
+        axes[im].imshow(imgs[im].reshape(28, 28), cmap='gray_r')
+    plt.show()
+    print("top corresponding adv. images:")
+    fig, axes = plt.subplots(1, len(ind))
+    for im in xrange(len(ind)):
+        axes[im].imshow(imgs_adv[im].reshape(28, 28), cmap='gray_r')
+    plt.show()
+    # for key, val in enumerate(imgs_adv):
+    #     pair_visual(imgs[key].reshape(28, 28),
+    #                 imgs_adv[key].reshape(28, 28))
+    #     run_gradcam(model, model_name, imgs[key], orig_targets[key],
+    #                 layer_name)
 
 
 def ga_checkpoint_deap(checkpoint=None):
