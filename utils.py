@@ -880,7 +880,6 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
     penultimate_layer_idx: previous layer index of layer_name whose grads
     are computed wrt its feature map
     """
-    import pdb; pdb.set_trace() ## DEBUG ##
     if layer_name is None:
         raise Warning("You need to provide a layer name indicating the layer"
                       " index of the cam you want to compute.")
@@ -889,18 +888,19 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
     layer_idx = [idx for idx, layer in enumerate(model.layers)
                  if layer.name == layer_name][0]
 
-    if np.max(img) != 255:
-        img *= 255
+    if img is not None:
+        if np.max(img) != 255:
+            img *= 255
 
-    # Notice the difference of images for each separate method
-    # Img: for cam has to be 4D
-    #      for saliency has to be 3D
-    #      for dense no img param required
-    #      for conv no img param required
-    pred_class = np.argmax(model.predict(img))
+        # Notice the difference of images for each separate method
+        # Img: for cam has to be 4D
+        #      for saliency has to be 3D
+        #      for dense no img param required
+        #      for conv no img param required
+        pred_class = np.argmax(model.predict(img))
 
-    print("image shape {}, predicted_class = {}".format(img.shape,
-                                                        pred_class))
+        print("image shape {}, predicted_class = {}".format(img.shape,
+                                                            pred_class))
     if mode == 'saliency':
         from vis.visualization import visualize_saliency
         heatmap = visualize_saliency(model, layer_idx, [pred_class], img)
@@ -924,11 +924,14 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
         vis_images = []
         for idx in filters:
             img = visualize_activation(model, layer_idx, filter_indices=idx)
-            img = utils.draw_text(img, str(idx))
+            # img = utils.draw_text(img, str(idx))
             vis_images.append(img)
 
         # Generate stitched image palette with 8 cols.
         stitched = utils.stitch_images(vis_images, cols=8)
+        if stitched.shape[2] == 1:
+            stitched = stitched.reshape(-1, stitched.shape[1])
+        plt.figure(figsize=(10, 5))
         plt.axis('off')
         plt.imshow(stitched)
         plt.title(layer_name)
@@ -937,15 +940,18 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
         from vis.visualization import visualize_activation
         from vis.utils import utils
         # Generate three different images of the same output index.
+        del img
         vis_images = []
         for idx in xrange(nb_out_imgs):
             img = visualize_activation(model, layer_idx,
                                        filter_indices=pred_class,
                                        max_iter=500)
-            img = utils.draw_text(img, str(pred_class))
+            # img = utils.draw_text(img.reshape(28, 28), str(pred_class))
             vis_images.append(img)
 
         stitched = utils.stitch_images(vis_images)
+        if stitched.shape[2] == 1:
+            stitched = stitched.reshape(-1, stitched.shape[1])
         plt.axis('off')
         plt.imshow(stitched)
         plt.title(layer_name)
