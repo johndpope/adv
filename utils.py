@@ -626,8 +626,7 @@ def calculate_fitness(feature_vectors):
     return fitness
 
 
-def find_top_predictions(model, model_name, layer_name, teX, teY,
-                         teX_adv, count):
+def find_top_predictions(model, teX, teY, teX_adv, count):
     preds = model.predict(teX)
     targets = np.argmax(preds, axis=1)
     orig_targets = np.argmax(teY, axis=1)
@@ -673,6 +672,8 @@ def find_top_predictions(model, model_name, layer_name, teX, teY,
                                       adv_accuracies[im] * 100))
         axes[1][im].axis('off')
     plt.show()
+
+    return imgs
     # for key, val in enumerate(imgs_adv):
     #     pair_visual(imgs[key].reshape(28, 28),
     #                 imgs_adv[key].reshape(28, 28))
@@ -872,13 +873,14 @@ def feature_selection(X, y, mode='univariate', model='regression'):
 
 
 def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
-            saliency=True):
+            mode='saliency', nb_out_imgs=5):
     """
     params: img 3D tensor
     layer_name: layer whose feature map you want to visualize
     penultimate_layer_idx: previous layer index of layer_name whose grads
     are computed wrt its feature map
     """
+    import pdb; pdb.set_trace() ## DEBUG ##
     if layer_name is None:
         raise Warning("You need to provide a layer name indicating the layer"
                       " index of the cam you want to compute.")
@@ -890,19 +892,64 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
     if np.max(img) != 255:
         img *= 255
 
-    pred_class = np.argmax(model.predict(np.expand_dims(img, axis=0)))
+    # Notice the difference of images for each separate method
+    # Img: for cam has to be 4D
+    #      for saliency has to be 3D
+    #      for dense no img param required
+    #      for conv no img param required
+    pred_class = np.argmax(model.predict(img))
+
     print("image shape {}, predicted_class = {}".format(img.shape,
                                                         pred_class))
-    if saliency:
+    if mode == 'saliency':
         from vis.visualization import visualize_saliency
         heatmap = visualize_saliency(model, layer_idx, [pred_class], img)
-    else:
+        plt.imshow(heatmap.reshape(28, 28))
+        plt.show()
+        plt.imsave(heatmap.reshape(28, 28))
+    if mode == 'cam':
         from vis.visualization import visualize_cam
         heatmap = visualize_cam(model, layer_idx, [pred_class], img,
                                 penultimate_layer_idx)
-    plt.imshow(heatmap)
-    plt.show()
-    plt.imsave(heatmap)
+        plt.imshow(heatmap.reshape(28, 28))
+        plt.show()
+        plt.imsave(heatmap.reshape(28, 28))
+    if mode == 'conv':
+        from vis.utils import utils
+        from vis.visualization import visualize_activation, get_num_filters
+        # Visualize all filters in this layer.
+        filters = np.arange(get_num_filters(model.layers[layer_idx]))
+        # Generate input image for each filter. Here `text` field is
+        # used to overlay `filter_value` on top of the image.
+        vis_images = []
+        for idx in filters:
+            img = visualize_activation(model, layer_idx, filter_indices=idx)
+            img = utils.draw_text(img, str(idx))
+            vis_images.append(img)
+
+        # Generate stitched image palette with 8 cols.
+        stitched = utils.stitch_images(vis_images, cols=8)
+        plt.axis('off')
+        plt.imshow(stitched)
+        plt.title(layer_name)
+        plt.show()
+    if mode == 'dense':
+        from vis.visualization import visualize_activation
+        from vis.utils import utils
+        # Generate three different images of the same output index.
+        vis_images = []
+        for idx in xrange(nb_out_imgs):
+            img = visualize_activation(model, layer_idx,
+                                       filter_indices=pred_class,
+                                       max_iter=500)
+            img = utils.draw_text(img, str(pred_class))
+            vis_images.append(img)
+
+        stitched = utils.stitch_images(vis_images)
+        plt.axis('off')
+        plt.imshow(stitched)
+        plt.title(layer_name)
+        plt.show()
 
 
 def plot_img_diff(orig_img, distorted, title):
