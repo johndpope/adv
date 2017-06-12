@@ -72,8 +72,7 @@ def get_args():
                         help="Nb of test set examples to attack")
     parser.add_argument("-pr", "--pretrained", type=bool, default=False,
                         help="Wether to load a pretrained model or not")
-    parser.add_argument("-sc", "--scale", type=bool, required=True,
-                        default=False,
+    parser.add_argument("-sc", "--scale", type=int, default=1,
                         help="Scale dataset by dividing with 255 or not")
     args = parser.parse_args()
 
@@ -296,22 +295,24 @@ if __name__ == "__main__":
         rank_features(np.vstack((trX, valX)).reshape(-1, 784),
                       np.argmax(np.vstack((trY, valY)), axis=1))
     if args.pair_visual is not None:
+        import matplotlib.pyplot as plt
         from utils import plot_img_diff
         if args.dataset == "mnist" or args.dataset == "mnist_lle":
             shape = 28, 28
         else:
             shape = teX.shape[1:]
-        fig = pair_visual(teX[args.pair_visual].reshape(shape),
-                          X_test_adv[args.pair_visual].reshape(shape))
+        # fig = pair_visual(teX[args.pair_visual].reshape(shape),
+        #                   X_test_adv[args.pair_visual].reshape(shape))
         plot_img_diff(
             teX[args.pair_visual].reshape(shape),
             X_test_adv[args.pair_visual].reshape(shape),
-            'class {}, prob. {:.2f}%'
+            'class {}, prob. {:.4}%'
             .format(
                 np.argmax(teY[args.pair_visual], axis=0),
                 np.max(teY[args.pair_visual]) * 100
                 )
             )
+        plt.show()
 
     if args.grid_visual is True:
         if args.dataset == "mnist":

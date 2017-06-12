@@ -632,19 +632,23 @@ def find_top_predictions(model, model_name, layer_name, teX, teY,
     targets = np.argmax(preds, axis=1)
     orig_targets = np.argmax(teY, axis=1)
     accuracies = np.max(preds, axis=1)
-    final_matrix = np.zeros((len(preds), 3))
-    final_matrix[:, 0] = orig_targets
-    final_matrix[:, 1] = targets
-    final_matrix[:, 2] = accuracies
-    # sort the array based on accuracies in reverse order
-    final_matrix.view('i8, i8, i8').sort(order=['f2'], axis=0)
+    final_matrix = np.zeros((len(preds), 4))
+    final_matrix[:, 0] = np.arange(len(preds))
+    final_matrix[:, 1] = orig_targets
+    final_matrix[:, 2] = targets
+    final_matrix[:, 3] = accuracies
+    # sort the array by row based on accuracies
+    final_matrix.view('i8, i8, i8, i8').sort(order=['f3'], axis=0)
+    # sort accuracies in descending order, keep only K-top
     final_matrix = final_matrix[::-1][:count]
-    _, ind = np.unique(final_matrix[:, 1], return_index=True)
-    accuracies = final_matrix[ind, 2]
-    targets = np.int32(final_matrix[ind, 1])
-    orig_targets = np.int32(final_matrix[ind, 0])
-    imgs = teX[targets]
-    imgs_adv = teX_adv[targets]
+    # import pdb; pdb.set_trace() ## DEBUG ##
+    # select unique predictd labels
+    _, ind = np.unique(final_matrix[:, 2], return_index=True)
+    accuracies = final_matrix[ind, 3]
+    targets = np.int32(final_matrix[ind, 2])
+    orig_targets = np.int32(final_matrix[ind, 1])
+    imgs = teX[np.int32(final_matrix[ind, 0])]
+    imgs_adv = teX_adv[np.int32(final_matrix[ind, 0])]
     adv_preds = model.predict(imgs_adv)
     adv_targets = np.argmax(adv_preds, axis=1)
     adv_accuracies = np.max(adv_preds, axis=1)
@@ -653,14 +657,21 @@ def find_top_predictions(model, model_name, layer_name, teX, teY,
     print("top {} adv. image accuracy: {}\nadv. labels: {}"
           .format(count, adv_accuracies, adv_targets))
     print("top predicted images:")
-    fig, axes = plt.subplots(1, len(ind))
+    fig, axes = plt.subplots(2, len(ind))
+    fig.subplots_adjust(top=1, right=2)
     for im in xrange(len(ind)):
-        axes[im].imshow(imgs[im].reshape(28, 28), cmap='gray_r')
-    plt.show()
-    print("top corresponding adv. images:")
-    fig, axes = plt.subplots(1, len(ind))
-    for im in xrange(len(ind)):
-        axes[im].imshow(imgs_adv[im].reshape(28, 28), cmap='gray_r')
+        axes[0][im].imshow(imgs[im].reshape(28, 28), cmap='gray_r')
+        axes[0][im].set_title("Actual label: {}\nPredicted label: {}"
+                              "\nProb. {:.4}"
+                              .format(orig_targets[im],
+                                      targets[im],
+                                      accuracies[im] * 100))
+        axes[0][im].axis('off')
+        axes[1][im].imshow(imgs_adv[im].reshape(28, 28), cmap='gray_r')
+        axes[1][im].set_title("Predicted label: {}\nProb.: {:.4}"
+                              .format(adv_targets[im],
+                                      adv_accuracies[im] * 100))
+        axes[1][im].axis('off')
     plt.show()
     # for key, val in enumerate(imgs_adv):
     #     pair_visual(imgs[key].reshape(28, 28),
@@ -860,27 +871,35 @@ def feature_selection(X, y, mode='univariate', model='regression'):
         return features1, features2
 
 
-def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None):
+def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
+            saliency=True):
     """
-    params: img 4D tensor
+    params: img 3D tensor
     layer_name: layer whose feature map you want to visualize
     penultimate_layer_idx: previous layer index of layer_name whose grads
     are computed wrt its feature map
     """
-    from vis.visualization import visualize_cam
-    # from keras.models import load_model
-    # model = load_model('./models/' + model_name)
     if layer_name is None:
         raise Warning("You need to provide a layer name indicating the layer"
                       " index of the cam you want to compute.")
         return -1
+
     layer_idx = [idx for idx, layer in enumerate(model.layers)
                  if layer.name == layer_name][0]
-    pred_class = np.argmax(model.predict(np.expand_dims(img * 255, axis=0)))
+
+    if np.max(img) != 255:
+        img *= 255
+
+    pred_class = np.argmax(model.predict(np.expand_dims(img, axis=0)))
     print("image shape {}, predicted_class = {}".format(img.shape,
                                                         pred_class))
-    heatmap = visualize_cam(model, layer_idx, [pred_class], img,
-                            penultimate_layer_idx)
+    if saliency:
+        from vis.visualization import visualize_saliency
+        heatmap = visualize_saliency(model, layer_idx, [pred_class], img)
+    else:
+        from vis.visualization import visualize_cam
+        heatmap = visualize_cam(model, layer_idx, [pred_class], img,
+                                penultimate_layer_idx)
     plt.imshow(heatmap)
     plt.show()
     plt.imsave(heatmap)
@@ -905,7 +924,7 @@ def plot_img_diff(orig_img, distorted, title):
     plt.xticks(())
     plt.yticks(())
     plt.subplot(1, 3, 3)
-    plt.title('Distorted Image\nPSNR: {:.2f}\nMSE: {:.2f}\nSSIM: {:.2}'
+    plt.title('Distorted Image\nPSNR: {:.2f}\nMSE: {:.2}\nSSIM: {:.2}'
               .format(psnr, msqerr, sim))
     plt.imshow(distorted, vmin=0, vmax=1, cmap='gray_r',
                interpolation='nearest')

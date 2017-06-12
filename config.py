@@ -77,7 +77,7 @@ def setup_data(args):
     trX = trX.astype('float32')
     teX = teX.astype('float32')
 
-    if args.scale:
+    if args.scale == 1:
         trX /= 255.
         teX /= 255.
     # when data stationary remove mean pixel intensity per example
