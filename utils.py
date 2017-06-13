@@ -135,12 +135,13 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
 def plot_2d_embedding(X, y, X_embedded, name, min_dist=10.0):
     fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(frameon=False)
-    plt.title("\\textbf{MNIST dataset} -- Two-dimensional "
+    plt.title("$\textbf{MNIST dataset}$ -- Two-dimensional "
               "embedding of %s" % name)
     plt.setp(ax, xticks=(), yticks=())
     plt.subplots_adjust(left=0.0, bottom=0.0, right=1.0, top=0.9,
                         wspace=0.0, hspace=0.0)
     plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=y, marker="x")
+    plt.colorbar()
 
     if min_dist is not None:
         from matplotlib import offsetbox
@@ -157,6 +158,7 @@ def plot_2d_embedding(X, y, X_embedded, name, min_dist=10.0):
                                       cmap=plt.cm.gray_r),
                 X_embedded[i])
             ax.add_artist(imagebox)
+    plt.show()
 
 
 def estimator_hyperparam_sensitivity(estimator, X, y, hyperparam="alpha"):
@@ -1134,3 +1136,13 @@ def mcnerman_midp(b, c):
         print("Error rate for classifiers if significantly different")
 
     return midp
+
+
+def tsne(X):
+    from MulticoreTSNE import MulticoreTSNE as TSNE
+    tsne = TSNE(n_jobs=-1)
+    X_embedded = tsne.fit_transform(
+        X.reshape(X.shape[0], -1).astype(np.float64)
+    )
+
+    return X_embedded

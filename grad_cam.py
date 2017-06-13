@@ -71,9 +71,10 @@ def modify_backprop(model, model_name, name):
                 layer.activation = tf.nn.relu
 
         # re-instanciate a new model
-        new_model = VGG16(weights='imagenet')
+        # new_model = VGG16(weights='imagenet')
         # new_model = eval(model_name +
         #                  '(img_rows=224, img_cols=224, channels=3, nb_classes=20)')
+        new_model = model
         # new_model.summary()
     return new_model
 
