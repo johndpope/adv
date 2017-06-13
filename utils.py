@@ -889,6 +889,11 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
                  if layer.name == layer_name][0]
 
     if img is not None:
+        if img.ndim == 4:
+            _, w, h, c = img.shape
+        elif img.ndim == 3:
+            w, h, c = img.shape
+
         if np.max(img) != 255:
             img *= 255
 
@@ -904,16 +909,22 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
     if mode == 'saliency':
         from vis.visualization import visualize_saliency
         heatmap = visualize_saliency(model, layer_idx, [pred_class], img)
-        plt.imshow(heatmap.reshape(28, 28))
+        if heatmap.shape[2] == 1:
+            heatmap = heatmap.reshape(heatmap.shape[0], heatmap.shape[1])
+        # elif heatmap.shape[3] == 3:
+        #     heatmap = heatmap.reshape(heatmap.shape[1:])
+        plt.imshow(heatmap)
         plt.show()
-        plt.imsave(heatmap.reshape(28, 28))
     if mode == 'cam':
         from vis.visualization import visualize_cam
         heatmap = visualize_cam(model, layer_idx, [pred_class], img,
                                 penultimate_layer_idx)
-        plt.imshow(heatmap.reshape(28, 28))
+        if heatmap.shape[3] == 1:
+            heatmap = heatmap.reshape(heatmap.shape[1], heatmap.shape[2])
+        elif heatmap.shape[3] == 3:
+            heatmap = heatmap.reshape(heatmap.shape[1:])
+        plt.imshow(heatmap)
         plt.show()
-        plt.imsave(heatmap.reshape(28, 28))
     if mode == 'conv':
         from vis.utils import utils
         from vis.visualization import visualize_activation, get_num_filters
@@ -931,7 +942,7 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
         stitched = utils.stitch_images(vis_images, cols=8)
         if stitched.shape[2] == 1:
             stitched = stitched.reshape(-1, stitched.shape[1])
-        plt.figure(figsize=(10, 5))
+        plt.figure(figsize=(60, 30))
         plt.axis('off')
         plt.imshow(stitched)
         plt.title(layer_name)
@@ -952,6 +963,7 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
         stitched = utils.stitch_images(vis_images)
         if stitched.shape[2] == 1:
             stitched = stitched.reshape(-1, stitched.shape[1])
+        plt.figure(figsize=(60, 30))
         plt.axis('off')
         plt.imshow(stitched)
         plt.title(layer_name)
