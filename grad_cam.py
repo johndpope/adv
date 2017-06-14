@@ -11,7 +11,6 @@ from keras.models import Sequential
 # import sys
 import cv2
 # from models import cnn_model
-from keras.applications import VGG16
 
 
 def target_category_loss(x, category_index, nb_classes=1000):
@@ -73,7 +72,7 @@ def modify_backprop(model, model_name, name):
         # re-instanciate a new model
         # new_model = VGG16(weights='imagenet')
         # new_model = eval(model_name +
-        #                  '(img_rows=224, img_cols=224, channels=3, nb_classes=20)')
+        #   '(img_rows=224, img_cols=224, channels=3, nb_classes=20)')
         new_model = model
         # new_model.summary()
     return new_model
@@ -104,8 +103,13 @@ def deprocess_image(x):
 
 
 def grad_cam(input_model, image, category_index, layer_name,
-             nb_classes=1000):
+             nb_classes=10):
 
+    _, w, h, c = image.shape
+    if c == 1:
+        shape = (w, h)
+    if c == 3:
+        shape = (w, h, c)
     model = Sequential()
     model.add(input_model)
     target_layer = lambda x: target_category_loss(x,
@@ -116,7 +120,7 @@ def grad_cam(input_model, image, category_index, layer_name,
 
     loss = K.mean(model.layers[-1].output)
     conv_output = [l for l in model.layers[0].layers
-                   if l.name is layer_name][0].output
+                   if l.name == layer_name][0].output
     # conv_output = filter(lambda l: "conv" in l.name,
     #                      reversed(model.layers[0].layers))[0].output
     grads = normalize(K.gradients(loss, conv_output)[0])
@@ -137,7 +141,7 @@ def grad_cam(input_model, image, category_index, layer_name,
 
     cam = cv2.resize(cam, image.shape[:2])
     cam = np.maximum(cam, 0)
-    heatmap = cam / np.max(cam)
+    heatmap = cam / (np.max(cam) + 1e-5)
 
     # Return to BGR [0..255] from the preprocessed image
     image = image[0, :]
@@ -151,7 +155,7 @@ def grad_cam(input_model, image, category_index, layer_name,
 
 
 def run_gradcam(model, model_name, image, true_label, layer_name):
-    image = deprocess_image(image).astype('float32')
+    image = deprocess_image(np.float32(image))
     image = np.expand_dims(image, axis=0)
     predictions = model.predict(image)
     predicted_class = np.argmax(predictions)
@@ -162,18 +166,18 @@ def run_gradcam(model, model_name, image, true_label, layer_name):
                   prob_predicted_class)
           )
 
-    print('Predicted class: {}'.format(predicted_class))
-    image = np.expand_dims(deprocess_image(image), axis=0)
+    # print('Predicted class: {}'.format(predicted_class))
+    # image = np.expand_dims(deprocess_image(image), axis=0)
     print("image shape {}".format(image.shape))
     cam, heatmap = grad_cam(model, image,
                             predicted_class,
                             layer_name,
-                            nb_classes=1000)
+                            nb_classes=10)
     cv2.imwrite("gradcam.jpg", cam)
 
     register_gradient()
     guided_model = modify_backprop(model, model_name, 'GuidedBackProp')
-    saliency_fn = compile_saliency_function(guided_model, 'block5_conv3')
+    saliency_fn = compile_saliency_function(guided_model, layer_name)
     saliency = saliency_fn([image, 0])
     gradcam = saliency[0] * heatmap[..., np.newaxis]
     cv2.imwrite("guided_gradcam.jpg", deprocess_image(gradcam))

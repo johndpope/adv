@@ -74,6 +74,8 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
     names = []
     counter = 0
     skf = StratifiedKFold(n_splits=10, random_state=2017, shuffle=True)
+    img_row, img_col, img_chn = X.shape[1:]
+    X = X.reshape(-1, np.prod(X.shape[1:]))
     fig = plt.figure()
     ax_roc = fig.add_subplot(111)
     for name, model in models:
@@ -85,18 +87,18 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
             trX, teX = X[tr_id], X[te_id]
             trY, teY = Y[tr_id], Y[te_id]
             if name == "mlp":
-                trX = trX.reshape(-1, 784)
+                trX = trX.reshape(-1, img_row * img_col * img_chn)
                 teX = teX.reshape(-1, 784)
-                X_test = X_test.reshape(-1, 784)
-                X_test_adv = X_test_adv.reshape(-1, 784)
+                X_test = X_test.reshape(-1, img_row * img_col * img_chn)
+                X_test_adv = X_test_adv.reshape(-1, img_row * img_col * img_chn)
             elif name == "irnn":
-                trX = trX.reshape(-1, 784, 1)
-                teX = teX.reshape(-1, 784, 1)
-                X_test = X_test.reshape(-1, 784, 1)
-                X_test_adv = X_test_adv.reshape(-1, 784, 1)
+                trX = trX.reshape(-1, img_row * img_col, img_chn)
+                teX = teX.reshape(-1, img_row * img_col, img_chn)
+                X_test = X_test.reshape(-1, img_row * img_col, img_chn)
+                X_test_adv = X_test_adv.reshape(-1, img_row * img_col, img_chn)
             else:
-                X_test = X_test.reshape(-1, 28, 28, 1)
-                X_test_adv = X_test_adv.reshape(-1, 28, 28, 1)
+                X_test = X_test.reshape(-1, img_row, img_col, img_chn)
+                X_test_adv = X_test_adv.reshape(-1, img_row, img_col, img_chn)
             model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
                       validation_split=0.2, verbose=1)
             scores = model.evaluate(teX, teY, verbose=0)
@@ -132,10 +134,11 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
     plt.show()
 
 
-def plot_2d_embedding(X, y, X_embedded, name, min_dist=10.0):
+def plot_2d_embedding(X, y, X_embedded, name, img_row=28, img_col=28,
+                      img_chn=1, min_dist=10.0):
     fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(frameon=False)
-    plt.title("$\textbf{MNIST dataset}$ -- Two-dimensional "
+    plt.title("$\\textbf{MNIST dataset}$ -- Two-dimensional "
               "embedding of %s" % name)
     plt.setp(ax, xticks=(), yticks=())
     plt.subplots_adjust(left=0.0, bottom=0.0, right=1.0, top=0.9,
@@ -153,8 +156,12 @@ def plot_2d_embedding(X, y, X_embedded, name, min_dist=10.0):
             if np.min(dist) < min_dist:
                 continue
             shown_images = np.r_[shown_images, [X_embedded[i]]]
+            if img_chn == 1:
+                datum = X[i].reshape(img_row, img_col)
+            if img_chn == 3:
+                datum = X[i].reshape(img_row, img_col, img_chn)
             imagebox = offsetbox.AnnotationBbox(
-                offsetbox.OffsetImage(X[i].reshape(28, 28),
+                offsetbox.OffsetImage(datum,
                                       cmap=plt.cm.gray_r),
                 X_embedded[i])
             ax.add_artist(imagebox)
@@ -628,7 +635,8 @@ def calculate_fitness(feature_vectors):
     return fitness
 
 
-def find_top_predictions(model, teX, teY, teX_adv, count):
+def find_top_predictions(model, teX, teY, teX_adv, count, img_row=28,
+                         img_col=28, img_chn=1):
     preds = model.predict(teX)
     targets = np.argmax(preds, axis=1)
     orig_targets = np.argmax(teY, axis=1)
@@ -642,7 +650,6 @@ def find_top_predictions(model, teX, teY, teX_adv, count):
     final_matrix.view('i8, i8, i8, i8').sort(order=['f3'], axis=0)
     # sort accuracies in descending order, keep only K-top
     final_matrix = final_matrix[::-1][:count]
-    # import pdb; pdb.set_trace() ## DEBUG ##
     # select unique predictd labels
     _, ind = np.unique(final_matrix[:, 2], return_index=True)
     accuracies = final_matrix[ind, 3]
@@ -658,17 +665,21 @@ def find_top_predictions(model, teX, teY, teX_adv, count):
     print("top {} adv. image accuracy: {}\nadv. labels: {}"
           .format(count, adv_accuracies, adv_targets))
     print("top predicted images:")
+    if img_chn == 3:
+        shape = img_row, img_col, img_chn
+    if img_chn == 1:
+        shape = img_row, img_col
     fig, axes = plt.subplots(2, len(ind))
     fig.subplots_adjust(top=1, right=2)
     for im in xrange(len(ind)):
-        axes[0][im].imshow(imgs[im].reshape(28, 28), cmap='gray_r')
+        axes[0][im].imshow(imgs[im].reshape(shape), cmap='gray_r')
         axes[0][im].set_title("Actual label: {}\nPredicted label: {}"
                               "\nProb. {:.4}"
                               .format(orig_targets[im],
                                       targets[im],
                                       accuracies[im] * 100))
         axes[0][im].axis('off')
-        axes[1][im].imshow(imgs_adv[im].reshape(28, 28), cmap='gray_r')
+        axes[1][im].imshow(imgs_adv[im].reshape(shape), cmap='gray_r')
         axes[1][im].set_title("Predicted label: {}\nProb.: {:.4}"
                               .format(adv_targets[im],
                                       adv_accuracies[im] * 100))
@@ -898,6 +909,7 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
 
         if np.max(img) != 255:
             img *= 255
+            print("Image max pixel value: {}".format(np.max(img)))
 
         # Notice the difference of images for each separate method
         # Img: for cam has to be 4D
