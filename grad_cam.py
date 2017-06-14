@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.python.framework import ops
 import keras
@@ -13,7 +14,7 @@ import cv2
 # from models import cnn_model
 
 
-def target_category_loss(x, category_index, nb_classes=1000):
+def target_category_loss(x, category_index, nb_classes=10):
     return tf.multiply(x, K.one_hot([category_index], nb_classes))
 
 
@@ -105,11 +106,11 @@ def deprocess_image(x):
 def grad_cam(input_model, image, category_index, layer_name,
              nb_classes=10):
 
-    _, w, h, c = image.shape
-    if c == 1:
-        shape = (w, h)
-    if c == 3:
-        shape = (w, h, c)
+    # _, w, h, c = image.shape
+    # if c == 1:
+    #     shape = (w, h)
+    # if c == 3:
+    #     shape = (w, h, c)
     model = Sequential()
     model.add(input_model)
     target_layer = lambda x: target_category_loss(x,
@@ -181,3 +182,7 @@ def run_gradcam(model, model_name, image, true_label, layer_name):
     saliency = saliency_fn([image, 0])
     gradcam = saliency[0] * heatmap[..., np.newaxis]
     cv2.imwrite("guided_gradcam.jpg", deprocess_image(gradcam))
+    fig, axes = plt.subplots(1, 2)
+    axes[0].imshow(cam)
+    axes[1].imshow(deprocess_image(gradcam))
+    plt.show()
