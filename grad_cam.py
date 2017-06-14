@@ -4,9 +4,7 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 import keras
 import keras.backend as K
-from keras.applications.vgg16 import preprocess_input
 # from keras.models import load_model
-from keras.preprocessing import image
 from keras.layers.core import Lambda
 from keras.models import Sequential
 # import sys
@@ -27,12 +25,16 @@ def normalize(x):
     return x / (K.sqrt(K.mean(K.square(x))) + 1e-5)
 
 
-def load_image(path, img_shape=(224, 224)):
+def prepare_image(x):
     # img_path = sys.argv[1]
-    img = image.load_img(path, target_size=img_shape)
-    x = image.img_to_array(img)
-    x = np.expand_dims(x, axis=0)
-    x = preprocess_input(x)
+    # img = image.load_img(path, target_size=img_shape)
+    # x = image.img_to_array(img)
+    # x = np.float32(np.expand_dims(x, axis=0))
+    # x = preprocess_image(x)
+    x = deprocess_image(x)
+    print("image shape: {}\n image max pixel val: {}".format(x.shape,
+                                                             np.max(x)))
+
     return x
 
 
@@ -79,6 +81,24 @@ def modify_backprop(model, model_name, name):
     return new_model
 
 
+def preprocess_image(x):
+    """Preprocesses a tensor encoding a batch of images.
+    # Arguments
+        x: input Numpy tensor, 4D.
+        data_format: data format of the image tensor.
+    # Returns
+        Preprocessed tensor.
+    """
+    # 'RGB'->'BGR'
+    x = x[:, :, :, ::-1]
+    # Zero-center by mean pixel
+    x[:, :, :, 0] -= 103.939
+    x[:, :, :, 1] -= 116.779
+    x[:, :, :, 2] -= 123.68
+
+    return x
+
+
 def deprocess_image(x):
     '''
     Same normalization as in:
@@ -119,12 +139,14 @@ def grad_cam(input_model, image, category_index, layer_name,
     model.add(Lambda(target_layer,
               output_shape=target_category_loss_output_shape))
 
-    loss = K.mean(model.layers[-1].output)
+    # loss = K.mean(model.layers[-1].output)
+    loss = K.sum(model.layers[-1].output)
     conv_output = [l for l in model.layers[0].layers
                    if l.name == layer_name][0].output
     # conv_output = filter(lambda l: "conv" in l.name,
     #                      reversed(model.layers[0].layers))[0].output
     grads = normalize(K.gradients(loss, conv_output)[0])
+    # grads = K.gradients(loss, conv_output)[0]
     # grads /= np.max(grads)
     gradient_function = K.function([model.layers[0].input,
                                     K.learning_phase()],
@@ -135,28 +157,30 @@ def grad_cam(input_model, image, category_index, layer_name,
     output, grads_val = output[0, :], grads_val[0, :, :, :]
 
     weights = np.mean(grads_val, axis=(0, 1))
-    cam = np.ones(output.shape[0: 2], dtype=np.float32)
+    cam = np.ones(output.shape[:2], dtype=np.float32)
 
     for i, w in enumerate(weights):
         cam += w * output[:, :, i]
 
+    # ReLU
     cam = cv2.resize(cam, image.shape[:2])
     cam = np.maximum(cam, 0)
     heatmap = cam / (np.max(cam) + 1e-5)
 
     # Return to BGR [0..255] from the preprocessed image
-    image = image[0, :]
+    image = image[0, :]  # this is analogous to np.squeeze()
     image -= np.min(image)
     image = np.minimum(image, 255)
 
-    cam = cv2.applyColorMap(np.uint8(255*heatmap), cv2.COLORMAP_JET)
+    cam = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
     cam = np.float32(cam) + np.float32(image)
-    cam = 255 * cam / np.max(cam)
+    cam = (255 * cam) / np.float32(np.max(cam) + 1e-5)
+
     return np.uint8(cam), heatmap
 
 
 def run_gradcam(model, model_name, image, true_label, layer_name):
-    image = deprocess_image(np.float32(image))
+    image = prepare_image(image)
     image = np.expand_dims(image, axis=0)
     predictions = model.predict(image)
     predicted_class = np.argmax(predictions)
@@ -167,13 +191,10 @@ def run_gradcam(model, model_name, image, true_label, layer_name):
                   prob_predicted_class)
           )
 
-    # print('Predicted class: {}'.format(predicted_class))
-    # image = np.expand_dims(deprocess_image(image), axis=0)
     print("image shape {}".format(image.shape))
-    cam, heatmap = grad_cam(model, image,
-                            predicted_class,
-                            layer_name,
+    cam, heatmap = grad_cam(model, image, predicted_class, layer_name,
                             nb_classes=10)
+    print("cam: {}, heatmap: {}".format(cam.shape, heatmap.shape))
     cv2.imwrite("gradcam.jpg", cam)
 
     register_gradient()
@@ -184,5 +205,5 @@ def run_gradcam(model, model_name, image, true_label, layer_name):
     cv2.imwrite("guided_gradcam.jpg", deprocess_image(gradcam))
     fig, axes = plt.subplots(1, 2)
     axes[0].imshow(cam)
-    axes[1].imshow(deprocess_image(gradcam))
+    axes[1].imshow(np.squeeze(gradcam))
     plt.show()

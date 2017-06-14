@@ -19,7 +19,7 @@ import itertools
 import scipy
 import networkx
 from operator import attrgetter
-from cleverhans.utils import pair_visual
+# from cleverhans.utils import pair_visual
 from grad_cam import run_gradcam
 
 
@@ -315,11 +315,29 @@ def visualize_cmap(model, img, layer_name="conv5_3", target_class=1,
 
     # Get the 512 input weights to the softmax.
     class_weights = model.layers[-1].get_weights()[0]
+    class_bias = model.layers[-1].get_weights()[1]
+    print("class weights shape: {}".format(class_weights.shape))
+    print("class bias shape: {}".format(class_bias.shape))
+    # weights_shape = class_weights.shape
+    # class_weights = class_weights.reshape(class_weights.shape[0],
+    #                                       np.prod(class_weights.shape[1:]))
+    # class_weights = normalize(class_weights)
+    # class_weights = class_weights.reshape(weights_shape)
     final_conv_layer = get_output_layer(model, layer_name)
     get_output = K.function([model.layers[0].input, K.learning_phase()],
                             [final_conv_layer.output,
                              model.layers[-1].output])
     [conv_outputs, predictions] = get_output([np.expand_dims(img, axis=0), 0])
+    print("predictions from K.function: {}".format(np.argmax(predictions,
+                                                             axis=1)))
+    preds = model.predict(np.expand_dims(img, axis=0))
+    predicted_class = np.argmax(preds)
+    prob_predicted_class = np.max(preds, axis=1)
+    print("True label {}, predicted label {}, with probability {}"
+          .format(target_class,
+                  predicted_class,
+                  prob_predicted_class)
+          )
     conv_outputs = conv_outputs[0, :, :, :]
 
     # Create the class activation map.
@@ -330,7 +348,6 @@ def visualize_cmap(model, img, layer_name="conv5_3", target_class=1,
             counter = 0
         cam += w * conv_outputs[:, :, counter]
         counter += 1
-    print("predictions", predictions)
     cam /= (np.max(cam) + 1e-5)
     cam = cv2.resize(cam, (height, width))
     heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
@@ -901,6 +918,15 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
     layer_idx = [idx for idx, layer in enumerate(model.layers)
                  if layer.name == layer_name][0]
 
+    # Notice the difference of images for each separate method
+    # Img: for cam has to be 4D
+    #      for saliency has to be 3D
+    #      for dense no img param required
+    #      for conv no img param required
+    pred_class = np.argmax(model.predict(np.expand_dims(img, axis=0)))
+    print("image shape {}, predicted_class = {}".format(img.shape,
+                                                        pred_class))
+
     if img is not None:
         if img.ndim == 4:
             _, w, h, c = img.shape
@@ -911,18 +937,10 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
             img *= 255
             print("Image max pixel value: {}".format(np.max(img)))
 
-        # Notice the difference of images for each separate method
-        # Img: for cam has to be 4D
-        #      for saliency has to be 3D
-        #      for dense no img param required
-        #      for conv no img param required
-        pred_class = np.argmax(model.predict(img))
-
-        print("image shape {}, predicted_class = {}".format(img.shape,
-                                                            pred_class))
     if mode == 'saliency':
         from vis.visualization import visualize_saliency
-        heatmap = visualize_saliency(model, layer_idx, [pred_class], img)
+        heatmap = visualize_saliency(model, layer_idx, list(np.arange(nb_out_imgs)),
+                                     img)
         if heatmap.shape[2] == 1:
             heatmap = heatmap.reshape(heatmap.shape[0], heatmap.shape[1])
         # elif heatmap.shape[3] == 3:
@@ -931,7 +949,8 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
         plt.show()
     if mode == 'cam':
         from vis.visualization import visualize_cam
-        heatmap = visualize_cam(model, layer_idx, [pred_class], img,
+        heatmap = visualize_cam(model, layer_idx, list(np.arange(nb_out_imgs)),
+                                np.expand_dims(img, axis=0),
                                 penultimate_layer_idx)
         if heatmap.shape[3] == 1:
             heatmap = heatmap.reshape(heatmap.shape[1], heatmap.shape[2])
@@ -969,7 +988,7 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
         vis_images = []
         for idx in xrange(nb_out_imgs):
             img = visualize_activation(model, layer_idx,
-                                       filter_indices=pred_class,
+                                       filter_indices=list(np.arange(nb_out_imgs)),
                                        max_iter=500)
             # img = utils.draw_text(img.reshape(28, 28), str(pred_class))
             vis_images.append(img)
@@ -1158,3 +1177,27 @@ def tsne(X):
     )
 
     return X_embedded
+
+
+def extract_hypercolumns(model, layer_indexes, image):
+    layers = [model.layers[layer].output for layer in layer_indexes]
+    get_feature = K.function([model.layers[0].input, K.learning_phase()],
+                             layers)
+    feature_maps = get_feature([[image, 0]])
+    hypercolumns = []
+    for convmap in feature_maps:
+        fmaps = [np.float32(convmap[0, :, :, i]) for i in range(convmap.shape[-1])]
+        layer = []
+        for fmap in fmaps:
+            fmap = np.abs(fmap)
+            norm = np.max(np.max(fmap, axis=0), axis=0)
+            if norm > 0:
+                fmap = fmap / norm
+                upscaled = scipy.misc.imresize(fmap, size=(66, 200),
+                                               mode='F',
+                                               interpolation='bilinear')
+                layer.append(upscaled)
+
+        hypercolumns.append(np.mean(np.float32(layer), axis=0))
+
+    return np.asarray(hypercolumns)
