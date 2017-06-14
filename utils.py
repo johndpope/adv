@@ -1201,3 +1201,24 @@ def extract_hypercolumns(model, layer_indexes, image):
         hypercolumns.append(np.mean(np.float32(layer), axis=0))
 
     return np.asarray(hypercolumns)
+
+
+def visualize_hypercolumns(model, original_img):
+
+    img = np.float32(cv2.resize(original_img, (200, 66))) / 255.0
+
+    layers_extract = [9]
+
+    hc = extract_hypercolumns(model, layers_extract, img)
+    avg = np.product(hc, axis=0)
+    avg = np.abs(avg)
+    avg = avg / np.max(np.max(avg))
+ 
+    heatmap = cv2.applyColorMap(np.uint8(255 * avg), cv2.COLORMAP_JET)
+    heatmap = np.float32(heatmap) / np.max(np.max(heatmap))
+    heatmap = cv2.resize(heatmap, original_img.shape[0:2][::-1])
+
+    both = 255 * heatmap * 0.7 + original_img
+    both = both / np.max(both)
+
+    return both
