@@ -689,14 +689,14 @@ def find_top_predictions(model, teX, teY, teX_adv, count, img_row=28,
     fig, axes = plt.subplots(2, len(ind))
     fig.subplots_adjust(top=1.2, right=2)
     for im in xrange(len(ind)):
-        axes[0][im].imshow(imgs[im].reshape(shape), cmap='gray_r')
+        axes[0][im].imshow(imgs[im].reshape(shape))
         axes[0][im].set_title("Actual label: {}\nPredicted label: {}"
                               "\nProb. {:.4}"
                               .format(orig_targets[im],
                                       targets[im],
                                       accuracies[im] * 100))
         axes[0][im].axis('off')
-        axes[1][im].imshow(imgs_adv[im].reshape(shape), cmap='gray_r')
+        axes[1][im].imshow(imgs_adv[im].reshape(shape))
         axes[1][im].set_title("Predicted label: {}\nProb.: {:.4}"
                               .format(adv_targets[im],
                                       adv_accuracies[im] * 100))
@@ -773,8 +773,8 @@ def mse(imgA, imgB):
     err = np.sum((np.float32(imgA) - np.float32(imgB)) ** 2)
     err = err / (np.float32(np.prod(imgA.shape)) + 1e-5)
 
-    psnr = 20.0 * np.log10(np.max(imgA)) - 10.0 * np.log10(err)  # np.max(imgA)
-    # should be 255.
+    # np.max(imgA) should be 255.
+    psnr = 20.0 * np.log10(np.max(imgA) + 1e-6) - 10.0 * np.log10(err + 1e-6)
 
     return psnr, err
 
@@ -1010,21 +1010,21 @@ def plot_img_diff(orig_img, distorted, title):
     plt.figure(figsize=(7, 4))
     plt.subplot(1, 3, 1)
     plt.title('Orignal Image')
-    plt.imshow(orig_img, vmin=0, vmax=1, cmap=plt.cm.gray_r,
+    plt.imshow(orig_img, vmin=0, vmax=1,
                interpolation='nearest')
 
     difference = distorted - orig_img
     plt.subplot(1, 3, 2)
     plt.title('Difference ($\ell_2$ norm: %.2f)'
               % np.sqrt(np.sum(difference ** 2)))
-    plt.imshow(difference, vmin=-0.5, vmax=0.5, cmap=plt.cm.PuOr,
+    plt.imshow(difference, vmin=-0.5, vmax=0.5, cmap=plt.cm.inferno,
                interpolation='nearest')
     plt.xticks(())
     plt.yticks(())
     plt.subplot(1, 3, 3)
     plt.title('Distorted Image\nPSNR: {:.2f}\nMSE: {:.2}\nSSIM: {:.2}'
               .format(psnr, msqerr, sim))
-    plt.imshow(distorted, vmin=0, vmax=1, cmap='gray_r',
+    plt.imshow(distorted, vmin=0, vmax=1,
                interpolation='nearest')
     plt.xticks(())
     plt.yticks(())

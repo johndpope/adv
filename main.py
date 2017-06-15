@@ -320,12 +320,15 @@ if __name__ == "__main__":
     if args.grid_visual is True:
         labels = np.unique(np.argmax(teY, axis=1))
         data = teX[labels]
-        predicted = np.argmax(model.predict(data), axis=1)
-        grid = np.zeros((len(labels), len(labels), shape[0], shape[1],
-                         shape[2]))
-        for idx, lbl in enumerate(np.int32(labels)):
-            grid[lbl, predicted[idx], :, :, :] = data[idx]
-        grid_visual(grid)
+        if data.ndim >= 3:
+            predicted = np.argmax(model.predict(data), axis=1)
+            grid = np.zeros((len(labels), len(labels), shape[0], shape[1],
+                             shape[2]))
+            for idx, lbl in enumerate(np.int32(labels)):
+                grid[lbl, predicted[idx], :, :, :] = data[idx]
+            grid_visual(grid)
+        else:
+            raise Warning("Data dimensions for grid visual should be 3D or 4D")
 
     if args.rank_classifiers is True:
         from models import cnn_model, mlp, hierarchical, irnn, identity_model
