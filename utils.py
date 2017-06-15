@@ -687,7 +687,7 @@ def find_top_predictions(model, teX, teY, teX_adv, count, img_row=28,
     if img_chn == 1:
         shape = img_row, img_col
     fig, axes = plt.subplots(2, len(ind))
-    fig.subplots_adjust(top=1, right=2)
+    fig.subplots_adjust(top=1.2, right=2)
     for im in xrange(len(ind)):
         axes[0][im].imshow(imgs[im].reshape(shape), cmap='gray_r')
         axes[0][im].set_title("Actual label: {}\nPredicted label: {}"
@@ -703,7 +703,7 @@ def find_top_predictions(model, teX, teY, teX_adv, count, img_row=28,
         axes[1][im].axis('off')
     plt.show()
 
-    return imgs
+    return np.float32(np.array(imgs) / 255.), final_matrix[ind, 0]
     # for key, val in enumerate(imgs_adv):
     #     pair_visual(imgs[key].reshape(28, 28),
     #                 imgs_adv[key].reshape(28, 28))
@@ -1183,19 +1183,20 @@ def extract_hypercolumns(model, layer_indexes, image):
     layers = [model.layers[layer].output for layer in layer_indexes]
     get_feature = K.function([model.layers[0].input, K.learning_phase()],
                              layers)
-    feature_maps = get_feature([[image, 0]])
+    feature_maps = get_feature([np.expand_dims(image, axis=0),  0])
     hypercolumns = []
     for convmap in feature_maps:
-        fmaps = [np.float32(convmap[0, :, :, i]) for i in range(convmap.shape[-1])]
+        fmaps = [np.float32(convmap[0, :, :, i]) for i in xrange(convmap.shape[-1])]
         layer = []
         for fmap in fmaps:
             fmap = np.abs(fmap)
             norm = np.max(np.max(fmap, axis=0), axis=0)
             if norm > 0:
                 fmap = fmap / norm
-                upscaled = scipy.misc.imresize(fmap, size=(66, 200),
+                upscaled = scipy.misc.imresize(fmap, size=(image.shape[0],
+                                                           image.shape[1]),
                                                mode='F',
-                                               interpolation='bilinear')
+                                               interp='bilinear')
                 layer.append(upscaled)
 
         hypercolumns.append(np.mean(np.float32(layer), axis=0))
@@ -1203,17 +1204,15 @@ def extract_hypercolumns(model, layer_indexes, image):
     return np.asarray(hypercolumns)
 
 
-def visualize_hypercolumns(model, original_img):
+def visualize_hypercolumns(model, img, layers_extract=[2]):
 
-    img = np.float32(cv2.resize(original_img, (200, 66))) / 255.0
-
-    layers_extract = [9]
-
+    # img = np.float32(cv2.resize(original_img, (200, 66))) / 255.0
+    original_img = img * 255.
     hc = extract_hypercolumns(model, layers_extract, img)
     avg = np.product(hc, axis=0)
     avg = np.abs(avg)
     avg = avg / np.max(np.max(avg))
- 
+
     heatmap = cv2.applyColorMap(np.uint8(255 * avg), cv2.COLORMAP_JET)
     heatmap = np.float32(heatmap) / np.max(np.max(heatmap))
     heatmap = cv2.resize(heatmap, original_img.shape[0:2][::-1])
@@ -1222,3 +1221,38 @@ def visualize_hypercolumns(model, original_img):
     both = both / np.max(both)
 
     return both
+
+
+def visualize_occlussion_map(model, img):
+    imgs, windows = [], []
+    # img = cv2.resize(original_img, (200, 66))
+    original_img = img * 255.
+    base_angle = model.predict(np.expand_dims(img, axis=0))
+
+    for x in xrange(0, img.shape[1], 2):
+        for y in xrange(0, img.shape[0], 2):
+            windows.append((x, y, 15, 15))
+            windows.append((x, y, 50, 50))
+
+    for window in windows:
+        x, y, w, h = window
+        masked = img * 1
+        masked[y: y + h, x: x + w] = 0
+        imgs.append(masked)
+
+    angles = model.predict(np.array(imgs))
+    result = np.zeros(shape=img.shape[:2], dtype=np.float32)
+    import pdb; pdb.set_trace() ## DEBUG ##
+    for i, window in enumerate(windows):
+        diff = np.abs(angles[i] - base_angle)
+        x, y, w, h = window
+        result[y: y + h, x: x + w] += diff
+    mask = np.abs(result)
+    mask = mask / np.max(np.max(mask))
+    # mask[np.where(mask < np.percentile(mask, 60))] = 0
+    mask = cv2.resize(mask, original_img.shape[0:2][::-1])
+
+    result = original_img
+    result[np.where(mask == 0)] = 0
+
+    return result

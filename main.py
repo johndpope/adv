@@ -301,27 +301,31 @@ if __name__ == "__main__":
             shape = 28, 28
         else:
             shape = teX.shape[1:]
-        # fig = pair_visual(teX[args.pair_visual].reshape(shape),
-        #                   X_test_adv[args.pair_visual].reshape(shape))
+        fig = pair_visual(teX[args.pair_visual].reshape(shape),
+                          X_test_adv[args.pair_visual].reshape(shape))
         plot_img_diff(
             teX[args.pair_visual].reshape(shape),
             X_test_adv[args.pair_visual].reshape(shape),
             'class {}, prob. {:.4}%'
             .format(
-                np.argmax(teY[args.pair_visual], axis=0),
-                np.max(teY[args.pair_visual]) * 100
+                np.argmax(teY[args.pair_visual]),
+                np.max(model.predict(
+                    np.expand_dims(teX[args.pair_visual], axis=0)
+                        )
+                    ) * 100
                 )
             )
         plt.show()
 
     if args.grid_visual is True:
-        if args.dataset == "mnist":
-            labels = np.unique(np.argmax(trY, axis=1))
-            data = trX[labels]
-        else:
-            labels = np.unique(np.argmax(teY, axis=1))
-            data = teX[labels]
-        grid_visual(np.hstack((labels, data)))
+        labels = np.unique(np.argmax(teY, axis=1))
+        data = teX[labels]
+        predicted = np.argmax(model.predict(data), axis=1)
+        grid = np.zeros((len(labels), len(labels), shape[0], shape[1],
+                         shape[2]))
+        for idx, lbl in enumerate(np.int32(labels)):
+            grid[lbl, predicted[idx], :, :, :] = data[idx]
+        grid_visual(grid)
 
     if args.rank_classifiers is True:
         from models import cnn_model, mlp, hierarchical, irnn, identity_model

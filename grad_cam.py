@@ -152,7 +152,7 @@ def grad_cam(input_model, image, category_index, layer_name,
                                     K.learning_phase()],
                                    [conv_output, grads])
 
-    output, grads_val = gradient_function([image, 0])
+    output, grads_val = gradient_function([np.float32(image/255.), 0])
     # grads_val = np.nan_to_num(grads_val)
     output, grads_val = output[0, :], grads_val[0, :, :, :]
 
@@ -182,7 +182,7 @@ def grad_cam(input_model, image, category_index, layer_name,
 def run_gradcam(model, model_name, image, true_label, layer_name):
     image = prepare_image(image)
     image = np.expand_dims(image, axis=0)
-    predictions = model.predict(image)
+    predictions = model.predict(np.float32(image/255.))
     predicted_class = np.argmax(predictions)
     prob_predicted_class = np.max(predictions, axis=1)
     print("True label {}, predicted label {}, with probability {}"
