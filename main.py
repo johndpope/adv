@@ -88,14 +88,14 @@ if __name__ == "__main__":
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
     from utils import print_data_shapes
 
-    if args.model == "mlp_lle" or fnmatch.fnmatch(args.model, "mlp_*"):
+    if fnmatch.fnmatch(args.model, "mlp_*"):
         import tensorflow as tf
         trX = trX.reshape(-1, 784)
         teX = teX.reshape(-1, 784)
         valX = valX.reshape(-1, 784)
         x = tf.placeholder(tf.float32, shape=(None, 784))
 
-    if args.model == "irnn":
+    if fnmatch.fnmatch(args.model, "irnn_*"):
         import tensorflow as tf
         trX = trX.reshape(-1, 784, 1)
         teX = teX.reshape(-1, 784, 1)

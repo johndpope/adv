@@ -687,7 +687,7 @@ def find_top_predictions(model, teX, teY, teX_adv, count, img_row=28,
     if img_chn == 1:
         shape = img_row, img_col
     fig, axes = plt.subplots(2, len(ind))
-    fig.subplots_adjust(top=1.2, right=2)
+    fig.subplots_adjust(top=1.3, right=2)
     for im in xrange(len(ind)):
         axes[0][im].imshow(imgs[im].reshape(shape))
         axes[0][im].set_title("Actual label: {}\nPredicted label: {}"
