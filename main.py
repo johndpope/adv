@@ -90,23 +90,24 @@ if __name__ == "__main__":
 
     if fnmatch.fnmatch(args.model, "mlp_*"):
         import tensorflow as tf
-        trX = trX.reshape(-1, 784)
-        teX = teX.reshape(-1, 784)
-        valX = valX.reshape(-1, 784)
-        x = tf.placeholder(tf.float32, shape=(None, 784))
+        trX = trX.reshape(-1, np.prod(trX.shape[1:]))
+        teX = teX.reshape(-1, np.prod(trX.shape[1:]))
+        valX = valX.reshape(-1, np.prod(trX.shape[1:]))
+        x = tf.placeholder(tf.float32, shape=(None, np.prod(trX.shape[1:])))
 
     if fnmatch.fnmatch(args.model, "irnn_*"):
         import tensorflow as tf
-        trX = trX.reshape(-1, 784, 1)
-        teX = teX.reshape(-1, 784, 1)
-        valX = valX.reshape(-1, 784, 1)
-        x = tf.placeholder(tf.float32, shape=(None, 784, 1))
+        trX = trX.reshape(-1, np.prod(trX.shape[1:3]), trX.shape[-1])
+        teX = teX.reshape(-1, np.prod(trX.shape[1:3]), trX.shape[-1])
+        valX = valX.reshape(-1, np.prod(trX.shape[1:3]), trX.shape[-1])
+        x = tf.placeholder(tf.float32, shape=(None, np.prod(trX.shape[1:3]),
+                                              trX.shape[-1]))
 
     if args.model == "siamese":
         from models import create_siamese_data
-        trX = trX.reshape(-1, 784)
-        valX = valX.reshape(-1, 784)
-        teX = teX.reshape(-1, 784)
+        trX = trX.reshape(-1, np.prod(trX.shape[1:]))
+        valX = valX.reshape(-1, np.prod(trX.shape[1:]))
+        teX = teX.reshape(-1, np.prod(trX.shape[1:]))
         trX, trY, teX, teY = create_siamese_data(trX, trY,
                                                  teX, teY)
 

@@ -136,7 +136,7 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
 
 def plot_2d_embedding(X, y, X_embedded, name, img_row=28, img_col=28,
                       img_chn=1, min_dist=10.0):
-    fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(5, 5))
     ax = plt.axes(frameon=False)
     plt.title("$\\textbf{MNIST dataset}$ -- Two-dimensional "
               "embedding of %s" % name)
