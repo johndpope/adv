@@ -58,7 +58,7 @@ def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
     plt.show()
 
 
-def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
+def rank_classifiers(models, X, Y, X_test, Y_test, X_test_adv,
                      save_model=False, epochs=2, batch_size=128):
     """
     models: list of tuples [('model name', model object), ...]
@@ -86,21 +86,27 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
             print("Fold {}".format(counter))
             trX, teX = X[tr_id], X[te_id]
             trY, teY = Y[tr_id], Y[te_id]
-            if name == "mlp":
+            if name.lower() == "mlp":
                 trX = trX.reshape(-1, img_row * img_col * img_chn)
-                teX = teX.reshape(-1, 784)
+                teX = teX.reshape(-1, img_row * img_col * img_chn)
                 X_test = X_test.reshape(-1, img_row * img_col * img_chn)
-                X_test_adv = X_test_adv.reshape(-1, img_row * img_col * img_chn)
-            elif name == "irnn":
+                X_test_adv = X_test_adv.reshape(-1,
+                                                img_row * img_col * img_chn)
+            elif name.lower() == "irnn":
                 trX = trX.reshape(-1, img_row * img_col, img_chn)
                 teX = teX.reshape(-1, img_row * img_col, img_chn)
                 X_test = X_test.reshape(-1, img_row * img_col, img_chn)
                 X_test_adv = X_test_adv.reshape(-1, img_row * img_col, img_chn)
             else:
+                trX = trX.reshape(-1, img_row, img_col, img_chn)
+                teX = teX.reshape(-1, img_row, img_col, img_chn)
                 X_test = X_test.reshape(-1, img_row, img_col, img_chn)
                 X_test_adv = X_test_adv.reshape(-1, img_row, img_col, img_chn)
-            model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
-                      validation_split=0.2, verbose=1)
+            # model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
+            #           validation_split=0.2, verbose=1)
+            # print("Dataset:\ntrX: {}\nteX: {}\nX_test: {}\ntrY: {}\n teY: {}"
+            #       .format(trX.shape, teX.shape, X_test.shape, trY.shape,
+            #               teY.shape))
             scores = model.evaluate(teX, teY, verbose=0)
             teY_pred = model.predict(teX)
             cv_results.append(scores[1])
@@ -109,11 +115,11 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
             counter += 1
         counter = 0
         legit_scores = model.evaluate(X_test, Y_test)
-        adv_scores = model.evaluate(X_test_adv, Y_test)
+        # adv_scores = model.evaluate(X_test_adv, Y_test)
         print("\nmodel = {}, mean = {}, std = {}, legit test acc. = {}, "
-              "adv. test acc. = {}"
+              "adv. test acc. = "
               .format(name, np.mean(cv_results), np.std(cv_results),
-                      legit_scores[1], adv_scores[1]))
+                      legit_scores[1]))
         # results.append([np.mean(cv_results), np.std(cv_results)])
         results.append(cv_results)
         cv_results = []
@@ -123,14 +129,58 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
                                        np.argmax(teY_pred, axis=1))
         print(report)
         plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr)
-        model.save_model("{}.hdf5".format(name))
+        if save_model:
+            model.save("models/{}.hdf5".format(name))
+
+    boxplot(results, names)
+
+
+def boxplot(results, names):
     # boxplot algorithm comparison
     fig = plt.figure()
     fig.suptitle('Algorithm Comparison')
-    ax = fig.add_subplot(111)
-    plt.boxplot(results)
-    plt.ylabel('Accuracy')
-    ax.set_xticklabels(names)
+    ax1 = fig.add_subplot(121)
+    # plt.subplots_adjust(left=0.0, bottom=0.0, right=1.5, top=0.9,
+    #                     wspace=0.0, hspace=0.0)
+    ax1.violinplot(results, showmeans=False, showextrema=True,
+                   showmedians=True)
+    ax1.set_xticklabels([])
+    ax1.set_ylabel('Accuracy %')
+    ax2 = fig.add_subplot(122)
+    # add patch_artist=True option to ax.boxplot()
+    # to get fill color
+    bp = ax2.boxplot(results, patch_artist=True)
+    # change outline color, fill color and linewidth of the boxes
+    colors = ['#808000', '#0000FF', '#008080', '#FF00FF',
+              '#008000', '#000080', '#800080', '#00FF00', '#00FFFF']
+    for idx, box in enumerate(bp['boxes']):
+        # change outline color
+        box.set(color='#000000', linewidth=2)
+        # change fill color
+        if len(bp['boxes']) > len(colors):
+            box.set(facecolor=colors[0])
+        else:
+            box.set(facecolor=colors[idx])
+
+    # change color and linewidth of the whiskers
+    for whisker in bp['whiskers']:
+        whisker.set(color='#7570b3', linewidth=2)
+
+    # change color and linewidth of the caps
+    for cap in bp['caps']:
+        cap.set(color='#7570b3', linewidth=2)
+
+    # change color and linewidth of the medians
+    for median in bp['medians']:
+        median.set(color='#b2df8a', linewidth=2)
+
+        # change the style of fliers and their fill
+    for flier in bp['fliers']:
+        flier.set(marker='o', color='#e7298a', alpha=0.5)
+
+    ax2.set_xticklabels(names)
+    # turn off the y-values
+    ax2.set_yticklabels([])
     plt.show()
 
 
