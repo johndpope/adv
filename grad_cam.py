@@ -123,14 +123,9 @@ def deprocess_image(x):
     return x
 
 
-def grad_cam(input_model, image, category_index, layer_name,
+def grad_cam(input_model, img, category_index, layer_name,
              nb_classes=10):
 
-    # _, w, h, c = image.shape
-    # if c == 1:
-    #     shape = (w, h)
-    # if c == 3:
-    #     shape = (w, h, c)
     model = Sequential()
     model.add(input_model)
     target_layer = lambda x: target_category_loss(x,
@@ -149,7 +144,7 @@ def grad_cam(input_model, image, category_index, layer_name,
                                     K.learning_phase()],
                                    [conv_output, grads])
 
-    output, grads_val = gradient_function([image, 0])
+    output, grads_val = gradient_function([np.expand_dims(img, axis=0), 0])
     # grads_val = np.nan_to_num(grads_val)
     output, grads_val = output[0, :], grads_val[0, :, :, :]
 
@@ -161,37 +156,38 @@ def grad_cam(input_model, image, category_index, layer_name,
 
     # ReLU
     cam = np.maximum(cam, 0)
-    cam = cam / (np.max(cam) + 1e-5)
+    # cam = cam / (np.max(cam) + 1e-5)
     heatmap = cam / (np.max(cam) + 1e-5)
-    cam = cv2.resize(cam, tuple(image.shape[:2][::-1]))
+    # cam = cv2.resize(cam, tuple(img.shape[:2][::-1]))
+    cam = cv2.resize(cam, img.shape[:2])
 
     # Return to BGR [0..255] from the preprocessed image
-    # image = image[0, :]  # this is analogous to np.squeeze()
-    # image -= np.min(image)
-    # image = np.minimum(image, 255)
+    # imge = img[0, :]  # this is analogous to np.squeeze()
+    # imge -= np.min(img)
+    # imge = np.minimum(img, 255)
 
     cam = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
-    cam = 1.0 * np.float32(cam) + np.float32(image)
+    # cam = 255.0 * (np.float32(cam) + np.float32(img))
+    cam = 1.0 * np.float32(cam) + np.float32(img)
     cam = cam / np.float32(np.max(cam) + 1e-5)
 
     # return np.uint8(cam), heatmap
     return cam, heatmap
 
 
-def run_gradcam(model, model_name, image, true_label, layer_name):
+def run_gradcam(model, model_name, img, class_label, layer_name):
     # image = prepare_image(image)
-    image = np.expand_dims(image, axis=0)
-    predictions = model.predict(image)
+    predictions = model.predict(np.expand_dims(img, axis=0))
     predicted_class = np.argmax(predictions)
     prob_predicted_class = np.max(predictions, axis=1)
     print("True label {}, predicted label {}, with probability {}"
-          .format(true_label,
+          .format(class_label,
                   predicted_class,
                   prob_predicted_class)
           )
 
-    print("image shape {}".format(image.shape))
-    cam, heatmap = grad_cam(model, image, predicted_class, layer_name,
+    print("image shape {}".format(img.shape))
+    cam, heatmap = grad_cam(model, img, predicted_class, layer_name,
                             nb_classes=10)
     print("cam: {}, heatmap: {}".format(cam.shape, heatmap.shape))
     cv2.imwrite("gradcam.jpg", cam)

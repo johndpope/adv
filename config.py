@@ -104,13 +104,6 @@ def setup_data(args):
     # Define input TF placeholder
     y = tf.placeholder(tf.float32, shape=(None, 10))
 
-    # print("trX = {}".format(trX.shape))
-    # print("trY = {}".format(trY.shape))
-    # print("valX = {}".format(valX.shape))
-    # print("valY = {}".format(valY.shape))
-    # print("teX = {}".format(teX.shape))
-    # print("teY = {}".format(teY.shape))
-
     return trX, trY, valX, valY, teX, teY, x, y
 
 

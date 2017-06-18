@@ -88,14 +88,14 @@ if __name__ == "__main__":
     trX, trY, valX, valY, teX, teY, x, y = setup_data(args)
     from utils import print_data_shapes
 
-    if fnmatch.fnmatch(args.model, "mlp_*"):
+    if fnmatch.fnmatch(args.model, "mlp*"):
         import tensorflow as tf
         trX = trX.reshape(-1, np.prod(trX.shape[1:]))
         teX = teX.reshape(-1, np.prod(trX.shape[1:]))
         valX = valX.reshape(-1, np.prod(trX.shape[1:]))
         x = tf.placeholder(tf.float32, shape=(None, np.prod(trX.shape[1:])))
 
-    if fnmatch.fnmatch(args.model, "irnn_*"):
+    if fnmatch.fnmatch(args.model, "irnn*"):
         import tensorflow as tf
         trX = trX.reshape(-1, np.prod(trX.shape[1:3]), trX.shape[-1])
         teX = teX.reshape(-1, np.prod(trX.shape[1:3]), trX.shape[-1])
@@ -210,7 +210,6 @@ if __name__ == "__main__":
     if args.attack == "jsma":
         X_test_adv = jsma_attack(sess, model, x, y, predictions, args,
                                  teX, teY)
-        import pdb; pdb.set_trace() ## DEBUG ##
     elif args.attack == "blackbox":
         # Initialize substitute training set reserved for adversary
         subX = teX[:args.holdout]
@@ -350,5 +349,8 @@ if __name__ == "__main__":
                          teY, epochs=args.epochs,
                          batch_size=args.batch_size)
 
+    # Save adversarial dataset
+    np.save('adv_data/' + args.model + '_' + args.dataset + '_adv',
+            X_test_adv)
     # Close TF session
-    # sess.close()
+    sess.close()

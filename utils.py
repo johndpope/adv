@@ -136,10 +136,9 @@ def rank_classifiers(models, X, Y, X_test, X_test_adv, Y_test,
 
 def plot_2d_embedding(X, y, X_embedded, name, img_row=28, img_col=28,
                       img_chn=1, min_dist=10.0):
-    fig = plt.figure(figsize=(5, 5))
+    fig = plt.figure(figsize=(3, 3))
     ax = plt.axes(frameon=False)
-    plt.title("$\\textbf{MNIST dataset}$ -- Two-dimensional "
-              "embedding of %s" % name)
+    plt.title("2D embedding of %s" % name)
     plt.setp(ax, xticks=(), yticks=())
     plt.subplots_adjust(left=0.0, bottom=0.0, right=1.0, top=0.9,
                         wspace=0.0, hspace=0.0)
@@ -306,14 +305,9 @@ def get_output_layer(model, layer_name):
 
 def visualize_cmap(model, img, layer_name="conv5_3", target_class=1,
                    output_path='./gradcam/gradimg.png'):
-    # model = load_model(model_path)
-    # original_img = cv2.imread(img_path, 1)
-    width, height, _ = img.shape
+    width, height = img.shape[:2]
 
-    # Reshape to the network input shape (3, w, h).
-    # img = np.array([np.transpose(np.float32(original_img), (2, 0, 1))])
-
-    # Get the 512 input weights to the softmax.
+    # Get the weights and biases of the softmax.
     class_weights = model.layers[-1].get_weights()[0]
     class_bias = model.layers[-1].get_weights()[1]
     print("class weights shape: {}".format(class_weights.shape))
@@ -353,9 +347,12 @@ def visualize_cmap(model, img, layer_name="conv5_3", target_class=1,
     heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
     heatmap[np.where(cam < 0.2)] = 0
     img = heatmap * 0.5 + img
+    # img = np.squeeze(img)
     cv2.imwrite(output_path, img)
-    plt.imshow(img)
-    plt.show()
+    # plt.imshow(img)
+    # plt.show()
+    print("image shape: {}".format(img.shape))
+    return img
 
 
 def rank_features(X, y):
@@ -653,57 +650,85 @@ def calculate_fitness(feature_vectors):
 
 
 def find_top_predictions(model, teX, teY, teX_adv, count, img_row=28,
-                         img_col=28, img_chn=1):
-    preds = model.predict(teX)
-    targets = np.argmax(preds, axis=1)
-    orig_targets = np.argmax(teY, axis=1)
-    accuracies = np.max(preds, axis=1)
-    final_matrix = np.zeros((len(preds), 4))
-    final_matrix[:, 0] = np.arange(len(preds))
-    final_matrix[:, 1] = orig_targets
-    final_matrix[:, 2] = targets
-    final_matrix[:, 3] = accuracies
-    # sort the array by row based on accuracies
-    final_matrix.view('i8, i8, i8, i8').sort(order=['f3'], axis=0)
-    # sort accuracies in descending order, keep only K-top
-    final_matrix = final_matrix[::-1][:count]
-    # select unique predictd labels
-    _, ind = np.unique(final_matrix[:, 2], return_index=True)
-    accuracies = final_matrix[ind, 3]
-    targets = np.int32(final_matrix[ind, 2])
-    orig_targets = np.int32(final_matrix[ind, 1])
-    imgs = teX[np.int32(final_matrix[ind, 0])]
-    imgs_adv = teX_adv[np.int32(final_matrix[ind, 0])]
-    adv_preds = model.predict(imgs_adv)
-    adv_targets = np.argmax(adv_preds, axis=1)
-    adv_accuracies = np.max(adv_preds, axis=1)
-    print("predicted top {} image labels: {}, true labels: {}\naccuracy: {}"
-          .format(count, targets, orig_targets, accuracies))
-    print("top {} adv. image accuracy: {}\nadv. labels: {}"
-          .format(count, adv_accuracies, adv_targets))
-    print("top predicted images:")
-    if img_chn == 3:
-        shape = img_row, img_col, img_chn
-    if img_chn == 1:
-        shape = img_row, img_col
-    fig, axes = plt.subplots(2, len(ind))
-    fig.subplots_adjust(top=1.3, right=2)
-    for im in xrange(len(ind)):
-        axes[0][im].imshow(imgs[im].reshape(shape))
-        axes[0][im].set_title("Actual label: {}\nPredicted label: {}"
-                              "\nProb. {:.4}"
-                              .format(orig_targets[im],
-                                      targets[im],
-                                      accuracies[im] * 100))
-        axes[0][im].axis('off')
-        axes[1][im].imshow(imgs_adv[im].reshape(shape))
-        axes[1][im].set_title("Predicted label: {}\nProb.: {:.4}"
-                              .format(adv_targets[im],
-                                      adv_accuracies[im] * 100))
-        axes[1][im].axis('off')
-    plt.show()
+                         img_col=28, img_chn=1, random=False):
+    if random:
+        rand_ind = np.unique(np.random.randint(0, len(teX), count))
+        preds = model.predict(teX[rand_ind])
+        orig_targets = np.argmax(teY[rand_ind], axis=1)
+    else:
+        orig_labels = np.argmax(teY, axis=1)
+        preds = model.predict(teX)
+        adv_preds = model.predict(teX_adv)
 
-    return np.float32(np.array(imgs) / 255.), final_matrix[ind, 0]
+    predicted_labels = np.argmax(preds, axis=1)
+    adv_predicted_labels = np.argmax(adv_preds, axis=1)
+    accuracies = np.max(preds, axis=1)
+    adv_accuracies = np.max(adv_preds, axis=1)
+    final_matrix = np.zeros((len(adv_preds), 6))
+    final_matrix[:, 0] = np.arange(len(adv_preds))  # tracking indeces for images
+    final_matrix[:, 1] = orig_labels
+    final_matrix[:, 2] = predicted_labels
+    final_matrix[:, 3] = adv_predicted_labels
+    final_matrix[:, 4] = accuracies
+    final_matrix[:, 5] = adv_accuracies
+    # sort the array by row based on accuracies
+    final_matrix.view('i8, i8, i8, i8, i8, i8').sort(order=['f5'], axis=0)
+    # sort accuracies in descending order, keep only K-top
+    # final_matrix = final_matrix[::-1][:count]
+    final_matrix = final_matrix[::-1]
+    sorted_adv_samples = np.zeros_like(final_matrix)
+    for idx, entry in enumerate(final_matrix):
+        if entry[1] == entry[2] and entry[4] > 0.8 and \
+           entry[2] != entry[3] and entry[5] > 0.8:
+            sorted_adv_samples[idx] = entry
+
+    # remove all zeros rows
+    sorted_adv_samples = sorted_adv_samples[
+        ~(sorted_adv_samples == 0).all(axis=1)
+    ]
+    print("#{} top adv. samples found".format(sorted_adv_samples.shape[0]))
+    if count <= sorted_adv_samples.shape[0]:
+        # select unique predictd labels
+        # _, ind = np.unique(final_matrix[:, 2], return_index=True)
+        # select top k adv. samples
+        final_matrix = sorted_adv_samples[:count]
+        imgs = teX[np.int32(final_matrix[:, 0])]
+        imgs_adv = teX_adv[np.int32(final_matrix[:, 0])]
+        orig_targets = np.int32(final_matrix[:, 1])
+        targets = np.int32(final_matrix[:, 2])
+        adv_targets = np.int32(final_matrix[:, 3])
+        accuracies = final_matrix[:, 4]
+        adv_accuracies = final_matrix[:, 5]
+        print("predicted top {} image labels: {}, true labels: {}\naccuracy: {}"
+              .format(count, targets, orig_targets, accuracies))
+        print("top {} adv. image accuracy: {}\nadv. labels: {}"
+              .format(count, adv_accuracies, adv_targets))
+        print("top predicted images:")
+        if img_chn == 3:
+            shape = img_row, img_col, img_chn
+        if img_chn == 1:
+            shape = img_row, img_col
+        fig, axes = plt.subplots(2, len(imgs))
+        fig.subplots_adjust(top=1, right=2)
+        for im in xrange(len(imgs)):
+            axes[0][im].imshow(imgs[im].reshape(shape))
+            axes[0][im].set_title("Actual label: {}\nPredicted label: {}"
+                                  "\nProb. {:.4}"
+                                  .format(orig_targets[im],
+                                          targets[im],
+                                          accuracies[im] * 100))
+            axes[0][im].axis('off')
+            axes[1][im].imshow(imgs_adv[im].reshape(shape))
+            axes[1][im].set_title("Predicted label: {}\nProb.: {:.4}"
+                                  .format(adv_targets[im],
+                                          adv_accuracies[im] * 100))
+            axes[1][im].axis('off')
+        plt.show()
+
+        return np.float32(np.array(imgs)), final_matrix[:, 0]
+    else:
+        print("Reduce the number of adv. samples.")
+
     # for key, val in enumerate(imgs_adv):
     #     pair_visual(imgs[key].reshape(28, 28),
     #                 imgs_adv[key].reshape(28, 28))
@@ -939,7 +964,8 @@ def vis_cam(model, img, layer_name=None, penultimate_layer_idx=None,
 
     if mode == 'saliency':
         from vis.visualization import visualize_saliency
-        heatmap = visualize_saliency(model, layer_idx, list(np.arange(nb_out_imgs)),
+        heatmap = visualize_saliency(model, layer_idx,
+                                     list(np.arange(nb_out_imgs)),
                                      img)
         if heatmap.shape[2] == 1:
             heatmap = heatmap.reshape(heatmap.shape[0], heatmap.shape[1])
@@ -1220,7 +1246,7 @@ def visualize_hypercolumns(model, img, layers_extract=[2]):
     both = 255 * heatmap * 0.7 + original_img
     both = both / np.max(both)
 
-    return both
+    return np.squeeze(both)
 
 
 def visualize_occlussion_map(model, img):
