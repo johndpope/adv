@@ -197,7 +197,9 @@ if __name__ == "__main__":
     if not args.pretrained:
         model.fit(trX, trY, shuffle=True, epochs=args.epochs,
                   batch_size=args.batch_size,
-                  validation_data=(valX, valY), verbose=1)
+                  validation_data=(valX, valY),
+                  callbacks=[ReduceLROnPlateau(patience=5, min_lr=1e-6)],
+                  verbose=1)
         model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
     # # for siamese
     # model.fit(tr_pairs, trY, epochs=args.epochs, batch_size=args.batch_size,
