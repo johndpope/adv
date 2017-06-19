@@ -296,7 +296,7 @@ if __name__ == "__main__":
     if args.rank_features is True:
         rank_features(np.vstack((trX, valX)).reshape(-1, 784),
                       np.argmax(np.vstack((trY, valY)), axis=1))
-    if args.pair_visual is not None:
+    if args.pair_visual != -1:
         import matplotlib.pyplot as plt
         from utils import plot_img_diff
         if args.dataset == "mnist" or args.dataset == "mnist_lle":
