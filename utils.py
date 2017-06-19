@@ -135,32 +135,50 @@ def rank_classifiers(models, X, Y, X_test, Y_test, X_test_adv,
     boxplot(results, names)
 
 
+def adjacent_values(vals, q1, q3):
+    upper_adjacent_value = q3 + (q3 - q1) * 1.5
+    upper_adjacent_value = np.clip(upper_adjacent_value, q3, vals[-1])
+
+    lower_adjacent_value = q1 - (q3 - q1) * 1.5
+    lower_adjacent_value = np.clip(lower_adjacent_value, vals[0], q1)
+    return lower_adjacent_value, upper_adjacent_value
+
+
+def set_axis_style(ax, labels):
+    ax.get_xaxis().set_tick_params(direction='out')
+    ax.xaxis.set_ticks_position('bottom')
+    ax.set_xticks(np.arange(1, len(labels) + 1))
+    ax.set_xticklabels(labels)
+    ax.set_xlim(0.25, len(labels) + 0.75)
+    ax.set_xlabel('Classifiers')
+
+
 def boxplot(results, names):
     # boxplot algorithm comparison
+    # fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(9, 4),
+    # sharey=True)
+    results *= 100
     fig = plt.figure()
     fig.suptitle('Algorithm Comparison')
     ax1 = fig.add_subplot(121)
-    # plt.subplots_adjust(left=0.0, bottom=0.0, right=1.5, top=0.9,
-    #                     wspace=0.0, hspace=0.0)
-    ax1.violinplot(results, showmeans=False, showextrema=True,
-                   showmedians=True)
-    ax1.set_xticklabels([])
     ax1.set_ylabel('Accuracy %')
-    ax2 = fig.add_subplot(122)
-    # add patch_artist=True option to ax.boxplot()
-    # to get fill color
-    bp = ax2.boxplot(results, patch_artist=True)
+    # add patch_artist=True option to ax.boxplot() to get fill color
+    bp = ax1.boxplot(results, patch_artist=True)
+
     # change outline color, fill color and linewidth of the boxes
     colors = ['#808000', '#0000FF', '#008080', '#FF00FF',
               '#008000', '#000080', '#800080', '#00FF00', '#00FFFF']
+
     for idx, box in enumerate(bp['boxes']):
         # change outline color
         box.set(color='#000000', linewidth=2)
         # change fill color
-        if len(bp['boxes']) > len(colors):
-            box.set(facecolor=colors[0])
-        else:
+        # if len(names) > len(colors):
+        #     box.set(facecolor=colors[0])
+        if idx <= len(names) - 1:
             box.set(facecolor=colors[idx])
+        else:
+            box.set(facecolor=colors[0])
 
     # change color and linewidth of the whiskers
     for whisker in bp['whiskers']:
@@ -178,9 +196,33 @@ def boxplot(results, names):
     for flier in bp['fliers']:
         flier.set(marker='o', color='#e7298a', alpha=0.5)
 
-    ax2.set_xticklabels(names)
-    # turn off the y-values
+    ax2 = fig.add_subplot(122)
+    parts = ax2.violinplot(results, showmeans=False, showextrema=False,
+                           showmedians=False)
+    # ax1.set_xticklabels([])
+    for pc in parts['bodies']:
+        pc.set_facecolor('#D43F3A')
+        pc.set_edgecolor('black')
+        pc.set_alpha(1)
+
+    quartile1, medians, quartile3 = np.percentile(results, [25, 50, 75],
+                                                  axis=1)
+    whiskers = np.array([
+        adjacent_values(sorted_array, q1, q3)
+        for sorted_array, q1, q3 in zip(results, quartile1, quartile3)])
+    whiskersMin, whiskersMax = whiskers[:, 0], whiskers[:, 1]
+
+    inds = np.arange(1, len(medians) + 1)
+    ax2.scatter(inds, medians, marker='o', color='white', s=30, zorder=3)
+    ax2.vlines(inds, quartile1, quartile3, color='k', linestyle='-', lw=5)
+    ax2.vlines(inds, whiskersMin, whiskersMax, color='k', linestyle='-', lw=1)
     ax2.set_yticklabels([])
+
+    for ax in [ax1, ax2]:
+        set_axis_style(ax, names)
+
+    # plt.subplots_adjust(left=0.0, bottom=0.0, right=1.5, top=0.9,
+    #                     wspace=0.0, hspace=0.0)
     plt.show()
 
 
@@ -1332,3 +1374,71 @@ def visualize_occlussion_map(model, img):
     result[np.where(mask == 0)] = 0
 
     return result
+
+
+def l2(x):
+    noisy = x + K.random.normal(shape=x.shape)
+    difference = noisy - x
+    error = K.sqrt(K.sum(difference ** 2))
+
+    return error
+
+
+def plot_kde(X):
+    from scipy import stats
+    if X.ndim > 1:
+        flat = X.flatten()
+    my_pdf = stats.gaussian_kde(flat)
+    x = np.linspace(-5, 5, 100)
+    plt.subplot(121)
+    residuals = stats.probplot(flat, plot=plt)
+    plt.text(4, -0.5, r'$Rˆ2 =$ ' + str(residuals), fontsize=12)
+    plt.subplot(122)
+    plt.plot(x, my_pdf(x), 'r')  # distribution function
+    result = plt.hist(flat, normed=1, alpha=0.3)
+    plt.show()
+
+
+def qqplot():
+    import pandas as pd
+    data = pd.read_clipboard(header=None).values.flatten()
+    data.sort()
+    norm = np.random.normal(0, 2, len(data))
+    norm.sort()
+    plt.figure(figsize=(12, 8), facecolor='1.0')
+
+    plt.plot(norm, data, "o")
+
+    #generate a trend line as in http://widu.tumblr.com/post/43624347354/matplotlib-trendline
+    z = np.polyfit(norm, data, 1)
+    p = np.poly1d(z)
+    plt.plot(norm, p(norm), "k--", linewidth=2)
+    plt.title("Normal Q-Q plot", size=28)
+    plt.xlabel("Theoretical quantiles", size=24)
+    plt.ylabel("Expreimental quantiles", size=24)
+    plt.tick_params(labelsize=16)
+    plt.show()
+
+
+def fit_normal():
+    from scipy.stats import norm
+    from numpy import linspace
+    from pylab import plot, show, hist, title
+
+    # picking 150 of from a normal distrubution
+    # with mean 0 and standard deviation 1
+    samp = norm.rvs(loc=0, scale=1, size=150)
+    param = norm.fit(samp)  # distribution fitting
+
+    # now, param[0] and param[1] are the mean and
+    # the standard deviation of the fitted distribution
+    x = linspace(-5, 5, 100)
+    # fitted distribution
+    pdf_fitted = norm.pdf(x, loc=param[0], scale=param[1])
+    # original distribution
+    pdf = norm.pdf(x)
+
+    title('Normal distribution')
+    plot(x, pdf_fitted, 'r-', x, pdf, 'b-')
+    hist(samp, normed=1, alpha=0.3)
+    show()
