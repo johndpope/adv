@@ -52,7 +52,7 @@ def get_args():
                         help="Rank feature importance using xgboost")
     parser.add_argument("-p", "--plot_arch", type=bool, default=False,
                         help="Plot the network architecture.")
-    parser.add_argument("-sp", "--split_dataset", type=float, default=0.21,
+    parser.add_argument("-sp", "--split_dataset", type=float, default=0.1,
                         help="Split the datasset. Keep % for validation.")
     parser.add_argument("-eps", "--epsilon", type=float, default=0.3,
                         help="Epsilon variable for adversarial distortion")
