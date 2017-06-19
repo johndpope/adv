@@ -28,7 +28,7 @@ import fnmatch
 def get_args():
     parser = argparse.ArgumentParser(description="Arguments for "
                                      "adversarial samples.")
-    parser.add_argument("-b", "--batch_size", type=int, default=128,
+    parser.add_argument("-b", "--batch_size", type=int, default=64,
                         help="Batch size for training "
                         "and testing the model")
     parser.add_argument("-e", "--epochs", type=int, default=15,
