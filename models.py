@@ -111,7 +111,7 @@ def siamese(data_shape):
                       output_shape=eucl_dist_output_shape)
     ([processed_a, processed_b])
 
-    model = Model(input=[input_a, input_b], output=distance)
+    model = Model(inputs=[input_a, input_b], outputs=distance)
 
     # train
     rms = RMSprop()
@@ -254,7 +254,7 @@ def hierarchical(data_shape, nb_classes=10,
 
     # Final predictions and model.
     prediction = Dense(nb_classes, activation='softmax')(encoded_cols)
-    model = Model(input=x, output=prediction)
+    model = Model(inputs=x, outputs=prediction)
     model.compile(loss='categorical_crossentropy',
                   optimizer='rmsprop',
                   metrics=['accuracy'])
@@ -472,6 +472,9 @@ def cnn_cifar(data_shape, nb_classes=10):
         Conv2D(64, (3, 3), padding='same', activation='relu'),
         Conv2D(64, (3, 3), activation='relu'),
         MaxPooling2D(pool_size=(2, 2)),
+        Conv2D(128, (3, 3), activation='relu'),
+        Conv2D(256, (3, 3), activation='relu'),
+        # MaxPooling2D(pool_size=(2, 2)),
         Dropout(0.25),
         Flatten(),
         Dense(512, activation='relu'),
@@ -525,7 +528,7 @@ def build_generator(latent_size):
 
     fake_image = cnn(h)
 
-    return Model(input=[latent, image_class], output=fake_image)
+    return Model(inputs=[latent, image_class], outputs=fake_image)
 
 
 def build_discriminator():
@@ -563,7 +566,7 @@ def build_discriminator():
     fake = Dense(1, activation='sigmoid', name='generation')(features)
     aux = Dense(10, activation='softmax', name='auxiliary')(features)
 
-    return Model(input=image, output=[fake, aux])
+    return Model(inputs=image, outputs=[fake, aux])
 
 
 def acgan():
@@ -597,7 +600,7 @@ def acgan():
     # we only want to be able to train generation for the combined model
     discriminator.trainable = False
     fake, aux = discriminator(fake)
-    combined = Model(input=[latent, image_class], output=[fake, aux])
+    combined = Model(inputs=[latent, image_class], outputs=[fake, aux])
 
     combined.compile(
         optimizer=Adam(lr=adam_lr, beta_1=adam_beta_1),

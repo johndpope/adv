@@ -7,6 +7,7 @@ import numpy as np
 import argparse
 import keras.backend as K
 from keras.utils.vis_utils import plot_model
+from keras.callbacks import ReduceLROnPlateau
 from cleverhans.attacks import FastGradientMethod
 # from cleverhans.utils_tf import model_argmax
 # from cleverhans.utils import other_classes
@@ -150,7 +151,8 @@ if __name__ == "__main__":
                   shuffle=True,
                   epochs=args.epochs,
                   batch_size=args.batch_size,
-                  validation_data=(teX, teX))
+                  validation_data=(teX, teX),
+                  callbacks=[ReduceLROnPlateau(min_lr=1e-6)])
         # display a 2D plot of the digit classes in the latent space
         x_test_encoded = encoder.predict(teX, batch_size=args.batch_size)
         plt.figure(figsize=(6, 6))
