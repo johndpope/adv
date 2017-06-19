@@ -1226,6 +1226,7 @@ def print_data_shapes(trX, trY, valX, valY, teX, teY):
     print("valY = {}, type = {}".format(valY.shape, valY.dtype))
     print("teX = {}, type = {}".format(teX.shape, teX.dtype))
     print("teY = {}, type = {}".format(teY.shape, teY.dtype))
+    print("max: {}, min: {}".format(np.max(trX), np.min(trX)))
 
 
 def wilson_score_interval(error, N):
