@@ -256,7 +256,7 @@ def hierarchical(data_shape, nb_classes=10,
     prediction = Dense(nb_classes, activation='softmax')(encoded_cols)
     model = Model(inputs=x, outputs=prediction)
     model.compile(loss='categorical_crossentropy',
-                  optimizer='rmsprop',
+                  optimizer='adam',
                   metrics=['accuracy'])
 
     return model
@@ -287,9 +287,8 @@ def irnn(data_shape, nb_classes=10,
                         activation='relu'))
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
-    rmsprop = RMSprop(lr=learning_rate)
     model.compile(loss='categorical_crossentropy',
-                  optimizer=rmsprop,
+                  optimizer='adam',
                   metrics=['accuracy'])
 
     return model
@@ -972,7 +971,7 @@ def conv_ae(data_shape):
     decoded = Dense(10, activation='softmax')(decoded)
 
     autoencoder = Model(input_img, decoded)
-    autoencoder.compile(optimizer='adadelta', loss='categorical_crossentropy',
+    autoencoder.compile(optimizer='adam', loss='categorical_crossentropy',
                         metrics=['accuracy'])
 
     return autoencoder
