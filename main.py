@@ -144,58 +144,58 @@ if __name__ == "__main__":
                    'keras_learning_phase': 0}
 
     # train on dataset
-    if not args.pretrained and args.model == "variational_ae":
-        from scipy.stats import norm
-        import matplotlib.pyplot as plt
-        model.fit(trX,
-                  shuffle=True,
-                  epochs=args.epochs,
-                  batch_size=args.batch_size,
-                  validation_data=(teX, teX),
-                  callbacks=[ReduceLROnPlateau(min_lr=1e-6)])
-        # display a 2D plot of the digit classes in the latent space
-        x_test_encoded = encoder.predict(teX, batch_size=args.batch_size)
-        plt.figure(figsize=(6, 6))
-        plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=teY)
-        plt.colorbar()
-        plt.show()
+    # if not args.pretrained and args.model == "variational_ae":
+    #     from scipy.stats import norm
+    #     import matplotlib.pyplot as plt
+    #     model.fit(trX,
+    #               shuffle=True,
+    #               epochs=args.epochs,
+    #               batch_size=args.batch_size,
+    #               validation_data=(teX, teX),
+    #               callbacks=[ReduceLROnPlateau(min_lr=1e-6)])
+    #     # display a 2D plot of the digit classes in the latent space
+    #     x_test_encoded = encoder.predict(teX, batch_size=args.batch_size)
+    #     plt.figure(figsize=(6, 6))
+    #     plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=teY)
+    #     plt.colorbar()
+    #     plt.show()
 
-        # display a 2D manifold of the digits
-        n = 15  # figure with 15x15 digits
-        digit_size = 28
-        figure = np.zeros((digit_size * n, digit_size * n))
-        # linearly spaced coordinates on the unit square were transformed
-        # Vthrough the inverse CDF (ppf) of the Gaussian
-        # to produce values of the latent variables z, since the prior
-        # of the latent space is Gaussian
-        grid_x = norm.ppf(np.linspace(0.05, 0.95, n))
-        grid_y = norm.ppf(np.linspace(0.05, 0.95, n))
+    #     # display a 2D manifold of the digits
+    #     n = 15  # figure with 15x15 digits
+    #     digit_size = 28
+    #     figure = np.zeros((digit_size * n, digit_size * n))
+    #     # linearly spaced coordinates on the unit square were transformed
+    #     # Vthrough the inverse CDF (ppf) of the Gaussian
+    #     # to produce values of the latent variables z, since the prior
+    #     # of the latent space is Gaussian
+    #     grid_x = norm.ppf(np.linspace(0.05, 0.95, n))
+    #     grid_y = norm.ppf(np.linspace(0.05, 0.95, n))
 
-        for i, yi in enumerate(grid_x):
-            for j, xi in enumerate(grid_y):
-                z_sample = np.array([[xi, yi]])
-                x_decoded = generator.predict(z_sample)
-                digit = x_decoded[0].reshape(digit_size, digit_size)
-                figure[i * digit_size: (i + 1) * digit_size,
-                       j * digit_size: (j + 1) * digit_size] = digit
-                plt.figure(figsize=(10, 10))
-                plt.imshow(figure, cmap='Greys_r')
-                plt.show()
-    if not args.pretrained and args.model == "siamese":
-        from models import compute_accuracy
-        model.fit([trX[:, 0], trX[:, 1]], trY, batch_size=args.batch_size,
-                  epochs=args.epochs, validation_data=([teX[:, 0], teX[:, 1]],
-                                                       teY))
-        # compute final accuracy on training and test sets
-        pred = model.predict([trX[:, 0], trX[:, 1]])
-        tr_acc = compute_accuracy(pred, trY)
-        pred = model.predict([teX[:, 0], teX[:, 1]])
-        te_acc = compute_accuracy(pred, teY)
+    #     for i, yi in enumerate(grid_x):
+    #         for j, xi in enumerate(grid_y):
+    #             z_sample = np.array([[xi, yi]])
+    #             x_decoded = generator.predict(z_sample)
+    #             digit = x_decoded[0].reshape(digit_size, digit_size)
+    #             figure[i * digit_size: (i + 1) * digit_size,
+    #                    j * digit_size: (j + 1) * digit_size] = digit
+    #             plt.figure(figsize=(10, 10))
+    #             plt.imshow(figure, cmap='Greys_r')
+    #             plt.show()
+    # if not args.pretrained and args.model == "siamese":
+    #     from models import compute_accuracy
+    #     model.fit([trX[:, 0], trX[:, 1]], trY, batch_size=args.batch_size,
+    #               epochs=args.epochs, validation_data=([teX[:, 0], teX[:, 1]],
+    #                                                    teY))
+    #     # compute final accuracy on training and test sets
+    #     pred = model.predict([trX[:, 0], trX[:, 1]])
+    #     tr_acc = compute_accuracy(pred, trY)
+    #     pred = model.predict([teX[:, 0], teX[:, 1]])
+    #     te_acc = compute_accuracy(pred, teY)
 
-        print('* Accuracy on training set: %0.2f%%' % (100 * tr_acc))
-        print('* Accuracy on test set: %0.2f%%' % (100 * te_acc))
+    #     print('* Accuracy on training set: %0.2f%%' % (100 * tr_acc))
+    #     print('* Accuracy on test set: %0.2f%%' % (100 * te_acc))
     if not args.pretrained:
-        model.fit(trX, trY, epochs=args.epochs,
+        model.fit(trX, trY, shuffle=True, epochs=args.epochs,
                   batch_size=args.batch_size,
                   validation_data=(valX, valY), verbose=1)
         model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
