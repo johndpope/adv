@@ -204,7 +204,7 @@ if __name__ == "__main__":
                       EarlyStopping(monitor='val_loss', min_delta=1e-6,
                                     patience=10, verbose=1, mode='auto'),
                       ModelCheckpoint(filepath, monitor='val_loss',
-                                      verbose=1, save_best_only=False,
+                                      verbose=1, save_best_only=True,
                                       mode='auto', period=1)
                   ],
                   verbose=1)
@@ -359,7 +359,8 @@ if __name__ == "__main__":
                          np.vstack((trY, valY)),
                          teX, X_test_adv,
                          teY, epochs=args.epochs,
-                         batch_size=args.batch_size)
+                         batch_size=args.batch_size,
+                         pretrained=args.pretrained)
 
     # Save adversarial dataset
     np.save('adv_data/' + args.model + '_' + args.dataset + '_adv',

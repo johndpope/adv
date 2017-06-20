@@ -59,7 +59,8 @@ def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
 
 
 def rank_classifiers(models, X, Y, X_test, Y_test, X_test_adv,
-                     save_model=False, epochs=2, batch_size=128):
+                     save_model=False, epochs=2, batch_size=128,
+                     pretrained=False):
     """
     models: list of tuples [('model name', model object), ...]
     X: training data
@@ -102,8 +103,9 @@ def rank_classifiers(models, X, Y, X_test, Y_test, X_test_adv,
                 teX = teX.reshape(-1, img_row, img_col, img_chn)
                 X_test = X_test.reshape(-1, img_row, img_col, img_chn)
                 X_test_adv = X_test_adv.reshape(-1, img_row, img_col, img_chn)
-            # model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
-            #           validation_split=0.2, verbose=1)
+            if not pretrained:
+                model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
+                          validation_split=0.2, verbose=1)
             # print("Dataset:\ntrX: {}\nteX: {}\nX_test: {}\ntrY: {}\n teY: {}"
             #       .format(trX.shape, teX.shape, X_test.shape, trY.shape,
             #               teY.shape))
