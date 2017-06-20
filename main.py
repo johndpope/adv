@@ -7,7 +7,7 @@ import numpy as np
 import argparse
 import keras.backend as K
 from keras.utils.vis_utils import plot_model
-from keras.callbacks import ReduceLROnPlateau
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
 from cleverhans.attacks import FastGradientMethod
 # from cleverhans.utils_tf import model_argmax
 # from cleverhans.utils import other_classes
@@ -195,13 +195,20 @@ if __name__ == "__main__":
     #     print('* Accuracy on training set: %0.2f%%' % (100 * tr_acc))
     #     print('* Accuracy on test set: %0.2f%%' % (100 * te_acc))
     if not args.pretrained:
+        filepath = './models/' + args.model + '_' + args.dataset + '.hdf5'
         model.fit(trX, trY, shuffle=True, epochs=args.epochs,
                   batch_size=args.batch_size,
                   validation_data=(valX, valY),
-                  callbacks=[ReduceLROnPlateau(patience=5, min_lr=1e-6,
-                                               verbose=1)],
+                  callbacks=[
+                      ReduceLROnPlateau(patience=5, min_lr=1e-6, verbose=1),
+                      EarlyStopping(monitor='val_loss', min_delta=1e-6,
+                                    patience=10, verbose=1, mode='auto'),
+                      ModelCheckpoint(filepath, monitor='val_loss',
+                                      verbose=1, save_best_only=False,
+                                      mode='auto', period=1)
+                  ],
                   verbose=1)
-        model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
+        # model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
     # # for siamese
     # model.fit(tr_pairs, trY, epochs=args.epochs, batch_size=args.batch_size,
     #           validation_data=(valX, valY), verbose=1)
