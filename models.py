@@ -460,7 +460,7 @@ def identity_model(test=None, inpt=Input(shape=(28, 28, 1)),
     return model
 
 
-def cnn_cifar(data_shape, nb_classes=10):
+def cnn(data_shape, nb_classes=10):
     model = Sequential([
         Dropout(0.5, input_shape=data_shape),
         Conv2D(32, (3, 3), activation='relu', padding='same',
