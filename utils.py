@@ -1458,8 +1458,8 @@ def plot_classifier_boundary(X, y, dataset_name, models):
     # point in the mesh [x_min, m_max]x[y_min, y_max].
     fig, ax = plt.subplots(2, 3)
     for idx, model in zip(product([0, 1], [0, 1, 2]), models):
-        model[1].fit(X, y, shuffle=True, validation_split=0.11, epochs=100,
-                     batch_size=128, verbose=1)
+        model[1].fit(X, y, shuffle=True, validation_split=0.1, epochs=100,
+                     batch_size=64, verbose=1)
         Z = model[1].predict(np.c_[xx.ravel(), yy.ravel()])
 
         # Put the result into a color plot
