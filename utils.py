@@ -1447,9 +1447,10 @@ def fit_normal():
     show()
 
 
-def plot_classifier_boundary(X, y, dataset_name, models):
-    from itertools import product
+def plot_classifier_boundary(X, y, models, dataset_name='mnist'):
     import os
+    from itertools import product
+    from keras.utils.np_utils import to_categorical
     # X = tsne(X)
     # create a mesh to plot in
     x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
@@ -1460,7 +1461,8 @@ def plot_classifier_boundary(X, y, dataset_name, models):
     # point in the mesh [x_min, m_max]x[y_min, y_max].
     fig, ax = plt.subplots(2, 3)
     for idx, model in zip(product([0, 1], [0, 1, 2]), models):
-        model[1].fit(X, y, shuffle=True, validation_split=0.1, epochs=100,
+        model[1].fit(X, to_categorical(y, 10), shuffle=True,
+                     validation_split=0.1, epochs=100,
                      batch_size=64, verbose=1)
         Z = model[1].predict(np.c_[xx.ravel(), yy.ravel()])
 
@@ -1473,7 +1475,8 @@ def plot_classifier_boundary(X, y, dataset_name, models):
         ax[idx[0], idx[1]].scatter(X[:, 0], X[:, 1], c=y,
                                    cmap=plt.cm.Paired)
         # also plot adversarial data
-        path = 'adv_data/' + str(model[0]) + dataset_name + '_adv.npy'
+        path = 'adv_data/' + str(model[0].lower()) + \
+               dataset_name.lower() + '_adv.npy'
         if os.path.exists(path):
             X_adv = np.load(path)
 
