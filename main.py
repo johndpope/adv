@@ -198,7 +198,8 @@ if __name__ == "__main__":
         model.fit(trX, trY, shuffle=True, epochs=args.epochs,
                   batch_size=args.batch_size,
                   validation_data=(valX, valY),
-                  callbacks=[ReduceLROnPlateau(patience=5, min_lr=1e-6)],
+                  callbacks=[ReduceLROnPlateau(patience=5, min_lr=1e-6,
+                                               verbose=1)],
                   verbose=1)
         model.save('./models/' + args.model + '_' + args.dataset + '.hdf5')
     # # for siamese
