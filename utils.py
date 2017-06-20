@@ -1459,7 +1459,7 @@ def plot_classifier_boundary(X, y, models, dataset_name='mnist'):
                          np.arange(y_min, y_max, 0.02))
     # Plot the decision boundary. For that, we will assign a color to each
     # point in the mesh [x_min, m_max]x[y_min, y_max].
-    fig, ax = plt.subplots(2, 3)
+    fig, ax = plt.subplots(2, int(len(models)/2 + 1))
     for idx, model in zip(product([0, 1], [0, 1, 2]), models):
         model[1].fit(X, to_categorical(y, 10), shuffle=True,
                      validation_split=0.1, epochs=100,
@@ -1479,8 +1479,7 @@ def plot_classifier_boundary(X, y, models, dataset_name='mnist'):
                dataset_name.lower() + '_adv.npy'
         if os.path.exists(path):
             X_adv = np.load(path)
+            ax[idx[0], idx[1]].scatter(X_adv[:, 0], X[:, 1], c=y,
+                                       cmap=plt.cm.Paired)
 
-        ax[idx[0], idx[1]].scatter(X_adv[:, 0], X[:, 1], c=y,
-                                   cmap=plt.cm.Paired)
-
-        ax[idx[0], idx[1]].set_title(model[1])
+        ax[idx[0], idx[1]].set_title(model[0])
