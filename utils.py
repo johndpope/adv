@@ -59,7 +59,8 @@ def plot_roc_auc(X, Y, skf, mean_tpr, mean_fpr):
 
 
 def rank_classifiers(models, X, Y, X_test, Y_test, X_test_adv,
-                     save_model=False, epochs=2, batch_size=128):
+                     save_model=False, epochs=2, batch_size=128,
+                     pretrained=False):
     """
     models: list of tuples [('model name', model object), ...]
     X: training data
@@ -102,8 +103,9 @@ def rank_classifiers(models, X, Y, X_test, Y_test, X_test_adv,
                 teX = teX.reshape(-1, img_row, img_col, img_chn)
                 X_test = X_test.reshape(-1, img_row, img_col, img_chn)
                 X_test_adv = X_test_adv.reshape(-1, img_row, img_col, img_chn)
-            # model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
-            #           validation_split=0.2, verbose=1)
+            if not pretrained:
+                model.fit(trX, trY, nb_epoch=epochs, batch_size=batch_size,
+                          validation_split=0.2, verbose=1)
             # print("Dataset:\ntrX: {}\nteX: {}\nX_test: {}\ntrY: {}\n teY: {}"
             #       .format(trX.shape, teX.shape, X_test.shape, trY.shape,
             #               teY.shape))
@@ -1445,9 +1447,10 @@ def fit_normal():
     show()
 
 
-def plot_classifier_boundary(X, y, dataset_name, models):
-    from itertools import product
+def plot_classifier_boundary(X, y, models, dataset_name='mnist'):
     import os
+    from itertools import product
+    from keras.utils.np_utils import to_categorical
     # X = tsne(X)
     # create a mesh to plot in
     x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
@@ -1456,9 +1459,10 @@ def plot_classifier_boundary(X, y, dataset_name, models):
                          np.arange(y_min, y_max, 0.02))
     # Plot the decision boundary. For that, we will assign a color to each
     # point in the mesh [x_min, m_max]x[y_min, y_max].
-    fig, ax = plt.subplots(2, 3)
+    fig, ax = plt.subplots(2, int(len(models)/2 + 1))
     for idx, model in zip(product([0, 1], [0, 1, 2]), models):
-        model[1].fit(X, y, shuffle=True, validation_split=0.1, epochs=100,
+        model[1].fit(X, to_categorical(y, 10), shuffle=True,
+                     validation_split=0.1, epochs=100,
                      batch_size=64, verbose=1)
         Z = model[1].predict(np.c_[xx.ravel(), yy.ravel()])
 
@@ -1471,11 +1475,11 @@ def plot_classifier_boundary(X, y, dataset_name, models):
         ax[idx[0], idx[1]].scatter(X[:, 0], X[:, 1], c=y,
                                    cmap=plt.cm.Paired)
         # also plot adversarial data
-        path = 'adv_data/' + str(model[0]) + dataset_name + '_adv.npy'
+        path = 'adv_data/' + str(model[0].lower()) + \
+               dataset_name.lower() + '_adv.npy'
         if os.path.exists(path):
             X_adv = np.load(path)
+            ax[idx[0], idx[1]].scatter(X_adv[:, 0], X[:, 1], c=y,
+                                       cmap=plt.cm.Paired)
 
-        ax[idx[0], idx[1]].scatter(X_adv[:, 0], X[:, 1], c=y,
-                                   cmap=plt.cm.Paired)
-
-        ax[idx[0], idx[1]].set_title(model[1])
+        ax[idx[0], idx[1]].set_title(model[0])
