@@ -1392,7 +1392,7 @@ def plot_kde(X):
     if X.ndim > 1:
         flat = X.flatten()
     my_pdf = stats.gaussian_kde(flat)
-    x = np.linspace(-10, 4, 100)
+    x = np.linspace(-5, 5, 100)
     # plt.subplots_adjust(left=0.0, bottom=0.0, right=1, top=0.9,
     #                     wspace=0.0, hspace=0.0)
     plt.subplot(121)
