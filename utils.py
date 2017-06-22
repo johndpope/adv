@@ -1392,10 +1392,12 @@ def plot_kde(X):
     if X.ndim > 1:
         flat = X.flatten()
     my_pdf = stats.gaussian_kde(flat)
-    x = np.linspace(-5, 5, 100)
+    x = np.linspace(-10, 4, 100)
+    # plt.subplots_adjust(left=0.0, bottom=0.0, right=1, top=0.9,
+    #                     wspace=0.0, hspace=0.0)
     plt.subplot(121)
     residuals = stats.probplot(flat, plot=plt)
-    plt.text(4, -0.5, r'$Rˆ2 =$ ' + str(residuals), fontsize=12)
+    # plt.text(1, -0.5, u'$Rˆ2$ = {:.2}'.format(residuals[1][2]), fontsize=12)
     plt.subplot(122)
     plt.plot(x, my_pdf(x), 'r')  # distribution function
     result = plt.hist(flat, normed=1, alpha=0.3)
@@ -1450,36 +1452,49 @@ def fit_normal():
 def plot_classifier_boundary(X, y, models, dataset_name='mnist'):
     import os
     from itertools import product
-    from keras.utils.np_utils import to_categorical
-    # X = tsne(X)
+    X = tsne(X)
+    print("X.shape: {}".format(X.shape))
     # create a mesh to plot in
-    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02),
-                         np.arange(y_min, y_max, 0.02))
+    x_min, x_max = X[:100, 0].min() - 1, X[:100, 0].max() + 1
+    y_min, y_max = X[:100, 1].min() - 1, X[:100, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.2),
+                         np.arange(y_min, y_max, 0.2))
     # Plot the decision boundary. For that, we will assign a color to each
     # point in the mesh [x_min, m_max]x[y_min, y_max].
     fig, ax = plt.subplots(2, int(len(models)/2 + 1))
     for idx, model in zip(product([0, 1], [0, 1, 2]), models):
-        model[1].fit(X, to_categorical(y, 10), shuffle=True,
-                     validation_split=0.1, epochs=100,
+        model[1].fit(X[:100], y[:100], shuffle=True,
+                     validation_split=0.1, epochs=10,
                      batch_size=64, verbose=1)
-        Z = model[1].predict(np.c_[xx.ravel(), yy.ravel()])
+        Z = np.argmax(model[1].predict(np.c_[xx.ravel(), yy.ravel()]), axis=1)
 
         # Put the result into a color plot
+        # Z = Z.reshape(xx.shape)
         Z = Z.reshape(xx.shape)
-        ax[idx[0], idx[1]].contourf(xx, yy, Z, cmap=plt.cm.Paired)
-        ax[idx[0], idx[1]].axis('off')
+        if int(len(models) / 2) + 1 <= 1:
+            ax[idx[0]].contourf(xx, yy, Z, cmap=plt.cm.Paired)
+            ax[idx[0]].axis('off')
+            ax[idx[0]].scatter(X[:100, 0], X[:100, 1],
+                               c=np.argmax(y, axis=1)[:100],
+                               cmap=plt.cm.Paired)
+            ax[idx[0]].set_title(model[0])
+        else:
+            ax[idx[0], idx[1]].contourf(xx, yy, Z, cmap=plt.cm.Paired)
+            ax[idx[0], idx[1]].axis('off')
 
-        # Plot also the training points
-        ax[idx[0], idx[1]].scatter(X[:, 0], X[:, 1], c=y,
-                                   cmap=plt.cm.Paired)
-        # also plot adversarial data
-        path = 'adv_data/' + str(model[0].lower()) + \
-               dataset_name.lower() + '_adv.npy'
-        if os.path.exists(path):
-            X_adv = np.load(path)
-            ax[idx[0], idx[1]].scatter(X_adv[:, 0], X[:, 1], c=y,
+            # Plot also the training points
+            ax[idx[0], idx[1]].scatter(X[:100, 0], X[:100, 1],
+                                       c=np.argmax(y, axis=1)[:100],
                                        cmap=plt.cm.Paired)
+            # also plot adversarial data
+            # path = 'adv_data/' + str(model[0].lower()) + \
+            #        dataset_name.lower() + '_adv.npy'
+            # if os.path.exists(path):
+            #     X_adv = np.load(path)
+            #     ax[idx[0], idx[1]].scatter(X_adv[:, 0], X[:, 1],
+            #                                c=np.argmax(y, axis=1),
+            #                                cmap=plt.cm.Paired)
 
-        ax[idx[0], idx[1]].set_title(model[0])
+            ax[idx[0], idx[1]].set_title(model[0])
+
+    plt.show()

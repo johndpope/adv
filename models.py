@@ -288,7 +288,7 @@ def irnn(data_shape, nb_classes=10,
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy',
-                  optimizer='adam',
+                  optimizer='adadelta',
                   metrics=['accuracy'])
 
     return model
@@ -903,7 +903,7 @@ def resnet(data_shape, repetations=3, net_type='resnet'):
                   activation="softmax")(pool2)
 
     model = Model(inputs=input, outputs=dense)
-    model.compile(loss="categorical_crossentropy", optimizer="adam",
+    model.compile(loss="categorical_crossentropy", optimizer=RMSprop(lr=1e-3),
                   metrics=['accuracy'])
 
     # return model, model_name
