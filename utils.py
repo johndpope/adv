@@ -1290,9 +1290,9 @@ def mcnerman_midp(b, c):
     return midp
 
 
-def tsne(X):
+def tsne(X, n_components=2):
     from MulticoreTSNE import MulticoreTSNE as TSNE
-    tsne = TSNE(n_jobs=-1)
+    tsne = TSNE(n_componets=n_components, n_jobs=-1)
     X_embedded = tsne.fit_transform(
         X.reshape(X.shape[0], -1).astype(np.float64)
     )
@@ -1450,22 +1450,38 @@ def fit_normal():
 
 
 def plot_classifier_boundary(X, y, models, dataset_name='mnist'):
-    import os
+    # import os
     from itertools import product
-    X = tsne(X)
-    print("X.shape: {}".format(X.shape))
-    # create a mesh to plot in
-    x_min, x_max = X[:100, 0].min() - 1, X[:100, 0].max() + 1
-    y_min, y_max = X[:100, 1].min() - 1, X[:100, 1].max() + 1
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.2),
-                         np.arange(y_min, y_max, 0.2))
+    # X = tsne(X)
+    # print("X.shape: {}".format(X.shape))
+    # # create a mesh to plot in
+    # x_min, x_max = X[:100, 0].min() - 1, X[:100, 0].max() + 1
+    # y_min, y_max = X[:100, 1].min() - 1, X[:100, 1].max() + 1
+    # xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.2),
+    #                      np.arange(y_min, y_max, 0.2))
     # Plot the decision boundary. For that, we will assign a color to each
     # point in the mesh [x_min, m_max]x[y_min, y_max].
     fig, ax = plt.subplots(2, int(len(models)/2 + 1))
     for idx, model in zip(product([0, 1], [0, 1, 2]), models):
+        if model[0].lower() == "mlp":
+            n_components = 2
+        elif model[0].lower() == "irnn":
+            n_components = 3
+        else:
+            n_components = 4
+
+        X = tsne(X, n_components)
+        print("X.shape: {}".format(X.shape))
+        # create a mesh to plot in
+        x_min, x_max = X[:100, 0].min() - 1, X[:100, 0].max() + 1
+        y_min, y_max = X[:100, 1].min() - 1, X[:100, 1].max() + 1
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.2),
+                             np.arange(y_min, y_max, 0.2))
+
         model[1].fit(X[:100], y[:100], shuffle=True,
                      validation_split=0.1, epochs=10,
                      batch_size=64, verbose=1)
+
         Z = np.argmax(model[1].predict(np.c_[xx.ravel(), yy.ravel()]), axis=1)
 
         # Put the result into a color plot
