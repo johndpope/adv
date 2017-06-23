@@ -238,8 +238,7 @@ def swwae(X_train, X_test):
     # plt.savefig('reconstructions.png')
 
 
-def hierarchical(data_shape, nb_classes=10,
-                 row_hidden=256, col_hidden=256):
+def hrnn(data_shape, nb_classes=10, row_hidden=256, col_hidden=256):
     # Embedding dimensions.
     # 4D input.
     x = Input(shape=data_shape)
@@ -251,9 +250,10 @@ def hierarchical(data_shape, nb_classes=10,
     encoded_columns = LSTM(col_hidden)(encoded_rows)
     reshaped = Reshape((16, 16))(encoded_columns)
     encoded_cols = LSTM(256)(reshaped)
+    drop = Dropout(0.25)(encoded_cols)
 
     # Final predictions and model.
-    prediction = Dense(nb_classes, activation='softmax')(encoded_cols)
+    prediction = Dense(nb_classes, activation='softmax')(drop)
     model = Model(inputs=x, outputs=prediction)
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
@@ -262,8 +262,7 @@ def hierarchical(data_shape, nb_classes=10,
     return model
 
 
-def irnn(data_shape, nb_classes=10,
-         learning_rate=1e-6, hidden_units=784):
+def irnn(data_shape, nb_classes=10, learning_rate=1e-6, hidden_units=784):
     # clip_norm = 1.0
     model = Sequential()
     model.add(SimpleRNN(hidden_units,
@@ -276,6 +275,7 @@ def irnn(data_shape, nb_classes=10,
                         recurrent_initializer=initializers.Identity(gain=1.0),
                         activation='relu'))
     model.add(Reshape((25, 25)))
+    model.add(Dropout(0.25))
     model.add(SimpleRNN(256,
                         kernel_initializer=initializers.RandomNormal(stddev=0.001),
                         recurrent_initializer=initializers.Identity(gain=1.0),
@@ -285,6 +285,7 @@ def irnn(data_shape, nb_classes=10,
                         kernel_initializer=initializers.RandomNormal(stddev=0.001),
                         recurrent_initializer=initializers.Identity(gain=1.0),
                         activation='relu'))
+    model.add(Dropout(0.25))
     model.add(Dense(nb_classes))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy',
