@@ -1464,38 +1464,44 @@ def plot_classifier_boundary(X, y, models, dataset_name='mnist'):
     fig, ax = plt.subplots(2, int(len(models)/2 + 1))
     for idx, model in zip(product([0, 1], [0, 1, 2]), models):
         if model[0].lower() == "mlp":
-            n_components = 2
+            # n_components = 2
+            y_pred = np.argmax(model[1].predict(X.reshape(-1, 784)), axis=1)
         elif model[0].lower() == "irnn":
-            n_components = 3
+            # n_components = 3
+            y_pred = np.argmax(model[1].predict(X.reshape(-1, 784, 1)), axis=1)
         else:
-            n_components = 4
+            # n_components = 4
+            y_pred = np.argmax(model[1].predict(X.reshape(-1, 28, 28, 1)),
+                               axis=1)
 
-        X = tsne(X, n_components)
+        X_emb = tsne(X, n_components=2)
         print("X.shape: {}".format(X.shape))
         # create a mesh to plot in
-        x_min, x_max = X[:100, 0].min() - 1, X[:100, 0].max() + 1
-        y_min, y_max = X[:100, 1].min() - 1, X[:100, 1].max() + 1
+        x_min, x_max = X_emb[:100, 0].min() - 1, X_emb[:100, 0].max() + 1
+        y_min, y_max = X_emb[:100, 1].min() - 1, X_emb[:100, 1].max() + 1
         xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.2),
                              np.arange(y_min, y_max, 0.2))
 
-        model[1].fit(X[:100], y[:100], shuffle=True,
-                     validation_split=0.1, epochs=10,
-                     batch_size=64, verbose=1)
+        # model[1].fit(X[:100], y[:100], shuffle=True,
+        #              validation_split=0.1, epochs=10,
+        #              batch_size=64, verbose=1)
 
-        Z = np.argmax(model[1].predict(np.c_[xx.ravel(), yy.ravel()]), axis=1)
+        # Z = np.argmax(model[1].predict(np.c_[xx.ravel(), yy.ravel()]), axis=1)
 
         # Put the result into a color plot
         # Z = Z.reshape(xx.shape)
-        Z = Z.reshape(xx.shape)
+        # Z = Z.reshape(xx.shape)
         if int(len(models) / 2) + 1 <= 1:
-            ax[idx[0]].contourf(xx, yy, Z, cmap=plt.cm.Paired)
+            ax[idx[0]].contourf(xx, yy, y_pred[:xx.shape[0]],
+                                cmap=plt.cm.Paired)
             ax[idx[0]].axis('off')
             ax[idx[0]].scatter(X[:100, 0], X[:100, 1],
                                c=np.argmax(y, axis=1)[:100],
                                cmap=plt.cm.Paired)
             ax[idx[0]].set_title(model[0])
         else:
-            ax[idx[0], idx[1]].contourf(xx, yy, Z, cmap=plt.cm.Paired)
+            ax[idx[0], idx[1]].contourf(xx, yy, y_pred[:xx.shape[0]],
+                                        cmap=plt.cm.Paired)
             ax[idx[0], idx[1]].axis('off')
 
             # Plot also the training points
