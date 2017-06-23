@@ -1292,7 +1292,7 @@ def mcnerman_midp(b, c):
 
 def tsne(X, n_components=2):
     from MulticoreTSNE import MulticoreTSNE as TSNE
-    tsne = TSNE(n_componets=n_components, n_jobs=-1)
+    tsne = TSNE(n_components=n_components, n_jobs=-1)
     X_embedded = tsne.fit_transform(
         X.reshape(X.shape[0], -1).astype(np.float64)
     )
