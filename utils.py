@@ -160,7 +160,7 @@ def boxplot(results, names):
     # fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(9, 4),
     # sharey=True)
     results *= 100
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10, 5))
     fig.suptitle('Algorithm Comparison')
     ax1 = fig.add_subplot(121)
     ax1.set_ylabel('Accuracy %')
