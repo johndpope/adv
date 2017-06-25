@@ -940,6 +940,28 @@ def feature_selection(X, y, mode='univariate', model='regression'):
                           fontsize=16)
                 plt.show()
 
+        # mutual information
+        np.random.seed(0)
+        X = np.random.rand(1000, 3)
+        y = X[:, 0] + np.sin(6 * np.pi * X[:, 1]) + 0.1 * np.random.randn(1000)
+
+        f_test, _ = f_regression(X, y)
+        f_test /= np.max(f_test)
+
+        mi = mutual_info_regression(X, y)
+        mi /= np.max(mi)
+
+        plt.figure(figsize=(15, 5))
+        for i in range(3):
+            plt.subplot(1, 3, i + 1)
+            plt.scatter(X[:, i], y)
+            plt.xlabel("$x_{}$".format(i + 1), fontsize=14)
+            if i == 0:
+                plt.ylabel("$y$", fontsize=14)
+                plt.title("F-test={:.2f}, MI={:.2f}".format(f_test[i], mi[i]),
+                          fontsize=16)
+                plt.show()
+
     if mode == "rfe":
         from sklearn.feature_selection import RFE
         from sklearn.linear_model import LogisticRegression, LassoCV
@@ -960,10 +982,19 @@ def feature_selection(X, y, mode='univariate', model='regression'):
         from sklearn.feature_selection import RFECV
         from sklearn.svm import SVR
         clf = SVR(kernel="linear")
-        selector = RFECV(clf, step=1, cv=5)
+        selector = RFECV(clf, step=1, cv=StratifiedKFold(2))
         selector = selector.fit(X, y)
         print("features support {}".format(selector.support_))
         print("features ranking {}".format(selector.ranking_))
+        print("Optimal number of features : %d" % selector.n_features_)
+
+        # Plot number of features VS. cross-validation scores
+        plt.figure()
+        plt.xlabel("Number of features selected")
+        plt.ylabel("Cross validation score (nb of correct classifications)")
+        plt.plot(range(1, len(selector.grid_scores_) + 1),
+                 selector.grid_scores_)
+        plt.show()
 
     if mode == "model_based":
         # Tree-based feature selection
@@ -1519,4 +1550,37 @@ def plot_classifier_boundary(X, y, models, dataset_name='mnist'):
 
             ax[idx[0], idx[1]].set_title(model[0])
 
+    plt.show()
+
+
+def classifier_significance_score(X, y, model):
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.model_selection import permutation_test_score
+    n_classes = np.unique(y).size
+    X = X.reshape(-1, np.prod(X.shape[1:]))
+    # Some noisy data not correlated
+    random = np.random.RandomState(seed=0)
+    E = random.normal(size=(X.shape))
+    X = np._c[X, E]
+    cv = StratifiedKFold(2)
+    score, permutation_scores, pvalue = permutation_test_score(
+        model, X, y, scoring="accuracy", cv=cv, n_permutations=100, n_jobs=-1)
+
+    print("Classification score %s (pvalue : %s)" % (score, pvalue))
+    plt.hist(permutation_scores, 20, label='Permutation scores')
+    ylim = plt.ylim()
+    # BUG: vlines(..., linestyle='--') fails on older versions of matplotlib
+    # plt.vlines(score, ylim[0], ylim[1], linestyle='--',
+    #          color='g', linewidth=3, label='Classification Score'
+    #          ' (pvalue %s)' % pvalue)
+    # plt.vlines(1.0 / n_classes, ylim[0], ylim[1], linestyle='--',
+    #          color='k', linewidth=3, label='Luck')
+    plt.plot(2 * [score], ylim, '--g', linewidth=3,
+             label='Classification Score'
+             ' (pvalue %s)' % pvalue)
+    plt.plot(2 * [1. / n_classes], ylim, '--k', linewidth=3, label='Luck')
+
+    plt.ylim(ylim)
+    plt.legend()
+    plt.xlabel('Score')
     plt.show()
