@@ -1411,11 +1411,11 @@ def visualize_occlussion_map(model, img):
 
 
 def l2(x):
-    noisy = x + K.random.normal(shape=x.shape)
+    noisy = x + K.random_normal_variable(K.int_shape(x), 0, 1)
     difference = noisy - x
-    error = K.sqrt(K.sum(difference ** 2))
+    error = K.sqrt(K.sum(difference ** 2, axis=3, keepdims=True))
 
-    return error
+    return x + error
 
 
 def plot_kde(X):

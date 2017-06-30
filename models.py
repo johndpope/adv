@@ -14,6 +14,7 @@ from keras import initializers
 from keras import backend as K
 from square_layer import SquareMulLayer
 from vae_loss import CustomVariationalLayer
+from utils import l2
 
 np.random.seed(2017)  # for reproducibility
 
@@ -467,12 +468,16 @@ def cnn(data_shape, nb_classes=10):
         Conv2D(32, (3, 3), activation='relu', padding='same',
                input_shape=data_shape),
         Conv2D(32, (3, 3), activation='relu'),
+        Lambda(l2),
         MaxPooling2D(pool_size=(2, 2)),
         Dropout(0.25),
         Conv2D(64, (3, 3), padding='same', activation='relu'),
+        Lambda(l2),
         Conv2D(64, (3, 3), activation='relu'),
+        Lambda(l2),
         MaxPooling2D(pool_size=(2, 2)),
         Conv2D(128, (3, 3), activation='relu'),
+        Lambda(l2),
         Conv2D(256, (3, 3), activation='relu'),
         # MaxPooling2D(pool_size=(2, 2)),
         Dropout(0.25),
