@@ -14,7 +14,7 @@ from keras import initializers
 from keras import backend as K
 from square_layer import SquareMulLayer
 from vae_loss import CustomVariationalLayer
-from utils import l2
+from ssim import DSSIMObjective
 
 np.random.seed(2017)  # for reproducibility
 
@@ -463,34 +463,30 @@ def identity_model(test=None, inpt=Input(shape=(28, 28, 1)),
 
 
 def cnn(data_shape, nb_classes=10):
-    model = Sequential([
-        Dropout(0.5, input_shape=data_shape),
-        Conv2D(32, (3, 3), activation='relu', padding='same',
-               input_shape=data_shape),
-        Conv2D(32, (3, 3), activation='relu'),
-        Lambda(l2),
-        MaxPooling2D(pool_size=(2, 2)),
-        Dropout(0.25),
-        Conv2D(64, (3, 3), padding='same', activation='relu'),
-        Lambda(l2),
-        Conv2D(64, (3, 3), activation='relu'),
-        Lambda(l2),
-        MaxPooling2D(pool_size=(2, 2)),
-        Conv2D(128, (3, 3), activation='relu'),
-        Lambda(l2),
-        Conv2D(256, (3, 3), activation='relu'),
-        # MaxPooling2D(pool_size=(2, 2)),
-        Dropout(0.25),
-        Flatten(),
-        Dense(512, activation='relu'),
-        Dropout(0.5),
-        Dense(nb_classes, activation='softmax')
-    ])
+    # model = Sequential([
+    x = Dropout(0.5, input_shape=data_shape)
+    x = Conv2D(32, (3, 3), activation='relu', padding='same',
+               input_shape=data_shape)(x)
+    x = Conv2D(32, (3, 3), activation='relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Dropout(0.25)(x)
+    x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
+    x = Conv2D(64, (3, 3), activation='relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Conv2D(128, (3, 3), activation='relu')(x)
+    ssim = Conv2D(256, (3, 3), activation='relu')(x)
+    # x = MaxPooling2D(pool_size=(2, 2)),
+    x = Dropout(0.25)(ssim)
+    x = Flatten()(x)
+    x = Dense(512, activation='relu')(x)
+    x = Dropout(0.5)(x)
+    x = Dense(nb_classes, activation='softmax')(x)
+    # ])
 
-    # Let's train the model using RMSprop
-    model.compile(loss='categorical_crossentropy',
+    model = Model(inputs=x, outputs=[x, ssim])
+    model.compile(loss=['categorical_crossentropy', DSSIMObjective()],
                   optimizer='adam',
-                  metrics=['accuracy'])
+                  metrics=['accuracy', 'mse'])
 
     return model
 
